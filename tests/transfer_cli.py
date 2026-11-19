@@ -40,8 +40,12 @@ def main():
         base = f"http://127.0.0.1:{port}"
         server = subprocess.Popen([str(binary), "-c", str(config), "-s", f"127.0.0.1:{port}", "-p", str(temp / "storage")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         def head(path):
-            with urllib.request.urlopen(urllib.request.Request(base + path, method="HEAD"), timeout=5) as response:
-                return response.headers
+            try:
+                with urllib.request.urlopen(urllib.request.Request(base + path, method="HEAD"), timeout=5) as response:
+                    return response.headers
+            except urllib.error.HTTPError as error:
+                detail = error.read().decode("utf-8", errors="replace")
+                raise AssertionError(f"HEAD {path} returned HTTP {error.code}: {detail}") from error
         def completed(name):
             for _ in range(600):
                 headers = head("/upload/" + name)

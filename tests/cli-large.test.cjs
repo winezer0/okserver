@@ -45,7 +45,7 @@ test("large CLI upload and parallel verified download use bounded buffers", { ti
       const started = Date.now();
       client = spawn(executable, ["cli", "-t", "2m", ...args], {
         stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
-        env: { ...process.env, OKSERVER_CACHE_DIR: scratch },
+        env: { ...process.env, OKSERVER_CACHE_DIR: path.join(scratch, "cache") },
       });
       let output = "";
       client.stdout.on("data", data => output = (output + data).slice(-4096));
