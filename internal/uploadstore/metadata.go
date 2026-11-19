@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/winezer0/okserver/internal/storage"
 )
@@ -20,12 +21,7 @@ var ErrVersion = errors.New("unsupported upload metadata version")
 // Read accepts only the current explicit session format.
 func Read[T any](directory string) (T, error) {
 	var value T
-	file, err := os.Open(filepath.Join(directory, "metadata.json"))
-	if err != nil {
-		return value, err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, maxMetadataBytes+1))
+	data, err := readMetadataBytes(filepath.Join(directory, "metadata.json"))
 	if err != nil {
 		return value, err
 	}
@@ -46,6 +42,24 @@ func Read[T any](directory string) (T, error) {
 	}
 	err = json.Unmarshal(data, &value)
 	return value, err
+}
+
+func readMetadataBytes(name string) ([]byte, error) {
+	for attempt := 0; ; attempt++ {
+		file, err := os.Open(name)
+		if err == nil {
+			var data []byte
+			data, err = io.ReadAll(io.LimitReader(file, maxMetadataBytes+1))
+			err = errors.Join(err, file.Close())
+			if err == nil {
+				return data, nil
+			}
+		}
+		if attempt == 7 || !retryableMetadataReadError(err) {
+			return nil, err
+		}
+		time.Sleep(time.Duration(attempt+1) * 5 * time.Millisecond)
+	}
 }
 
 // Write requires the caller's session lock. Data is synced before atomic replace.
