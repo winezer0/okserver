@@ -63,6 +63,8 @@ By default, data APIs accept same-origin browser requests. Configure complete or
 
 Authentication uses `server.auth: "user:password"` (HTTP Basic) or `server.param: "token:secret"` (URL parameter). If both are enabled, valid Basic credentials take precedence; otherwise the URL parameter is checked. Protocol-reserved parameter names cannot be used for authentication, and duplicate authentication parameters are rejected. Static frontend assets are public, while data routes require authentication. Logs and startup examples do not print configured credentials.
 
+`server.disable_front_ui: true` disables `/`, `/files`, `/files/...`, `/tasks`, and frontend assets. It does not disable APIs. APIs still enforce configured authentication; keep the management switches below `false` as well when directory management must be unavailable.
+
 | Setting | Default | Description |
 |---|---:|---|
 | `server.listen` / `server.path` | `:28080` / `./uploads` | Listen address and file root |
@@ -140,6 +142,30 @@ Browser and CLI retry network errors, 408, 423, 429, and 5xx with bounded backof
 | `/api/v1/uploads/cleanup` | POST | Clean expired records |
 | `/api/v1/events` | GET | SSE task snapshot and events |
 | `/healthz`, `/readyz`, `/metrics` | GET / HEAD | Health, readiness, and Prometheus metrics |
+
+Directory management is disabled by default. When enabled, management APIs still require server authentication and constrain relative paths to the `server.path` root. Absolute paths, traversal, and the internal `.okserver` area are rejected. Directory creation creates one level only. Deletion accepts up to 500 paths; directories are deleted recursively and permanently. The full request list is validated before deletion begins, then paths are removed one by one.
+
+```yaml
+server:
+  allow_create_dir: true
+  allow_delete_file: true
+```
+
+```sh
+# Create one folder under the relative parent directory reports
+curl --fail-with-body -u 'user:password' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"parent":"reports","name":"2026"}' \\
+  http://localhost:28080/api/v1/create
+
+# Batch-delete files and folders; folders are deleted recursively
+curl --fail-with-body -u 'user:password' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"paths":["reports/old.csv","tmp"]}' \\
+  http://localhost:28080/api/v1/delete
+```
+
+Create requests use `{ "parent": "relative parent directory", "name": "single-level directory name" }`; use an empty `parent` for the storage root. Delete requests use `{ "paths": ["relative/path", ...] }`. The web UI reads the switches through `/api/v1/capabilities` and hides disabled actions; the server independently rejects disabled writes. Multi-selection is limited to the current page. Batch download downloads selected files and skips selected directories.
 
 The browser and CLI use `Upload-Token` to isolate upload sessions; the server stores credential digests. Chunks include `X-Chunk-SHA256` by default, and the final chunk includes the full-file digest. Internal state lives under `.okserver` in the storage root and is excluded from listings and download routes. Upload management, digest caching, and storage publication use JSON manifests, file locks, and atomic replacement. Managed files should remain immutable after publication; external updates should replace the file.
 

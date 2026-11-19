@@ -38,7 +38,8 @@ export const en: Record<Key, string> = {
   downloadSelected: "Download selected",
   deleteSelected: "Delete selected",
   confirmDelete: "Confirm deletion",
-  recursiveDeleteNotice: "Selected folders and all their contents will be deleted recursively. This cannot be undone.",
+  recursiveDeleteNotice:
+    "Selected folders and all their contents will be deleted recursively. This cannot be undone.",
   delete: "Delete",
   deleteItem: "Delete",
   skippedDirectories: "Only files can be downloaded; selected folders were skipped.",

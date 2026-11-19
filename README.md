@@ -63,6 +63,8 @@ okserver --version
 
 认证使用 `server.auth: "user:password"`（HTTP Basic）或 `server.param: "token:secret"`（URL 参数）。两者同时启用时，合法 Basic 凭证优先，否则验证参数凭证。协议保留参数名不能用作认证参数名，重复认证参数会被拒绝。静态前端资源可公开访问，数据路由需要认证；日志和启动提示不会输出配置中的凭证。
 
+`server.disable_front_ui: true` 只关闭 `/`、`/files`、`/files/...`、`/tasks` 和前端静态资源，不关闭 API。API 仍按配置执行认证；若要禁止目录管理，也应保持下面两个管理开关为 `false`。
+
 | 配置 | 默认值 | 说明 |
 |---|---:|---|
 | `server.listen` / `server.path` | `:28080` / `./uploads` | 监听地址与文件根目录 |
@@ -140,6 +142,30 @@ okserver cli -auth "user:password" -ca ca.crt -c -d @file.zip "https://server/up
 | `/api/v1/uploads/cleanup` | POST | 清理过期记录 |
 | `/api/v1/events` | GET | SSE 任务快照与事件 |
 | `/healthz`, `/readyz`, `/metrics` | GET / HEAD | 健康、就绪和 Prometheus 指标 |
+
+目录管理默认关闭。启用后，管理 API 仍需要通过服务器认证，并始终将相对路径限制在 `server.path` 根目录内；绝对路径、目录穿越和内部 `.okserver` 路径会被拒绝。目录创建只创建单级目录；删除接口最多接受 500 个路径，目录会递归删除且不可恢复。删除列表先整体校验，随后逐项删除。
+
+```yaml
+server:
+  allow_create_dir: true
+  allow_delete_file: true
+```
+
+```sh
+# 在相对父目录 reports 下创建单级目录
+curl --fail-with-body -u 'user:password' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"parent":"reports","name":"2026"}' \\
+  http://localhost:28080/api/v1/create
+
+# 批量删除文件和目录；目录会递归删除
+curl --fail-with-body -u 'user:password' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"paths":["reports/old.csv","tmp"]}' \\
+  http://localhost:28080/api/v1/delete
+```
+
+创建请求使用 `{ "parent": "相对父目录", "name": "单级目录名" }`；根目录用空字符串作为 `parent`。删除请求使用 `{ "paths": ["相对路径", ...] }`。Web 界面通过 `/api/v1/capabilities` 读取开关状态并隐藏未启用的操作，服务端仍会独立拒绝被禁用的写请求。多选仅作用于当前页；批量下载会下载所选文件并跳过所选目录。
 
 浏览器和 CLI 使用 `Upload-Token` 隔离上传会话，服务端保存凭证摘要。分片默认携带 `X-Chunk-SHA256`，最后一片携带完整摘要。内部状态保存在存储根目录的 `.okserver` 下，不会出现在文件列表或下载路由中。上传任务管理、摘要缓存和存储发布由 JSON 清单、文件锁及原子替换支持；发布后的受管理文件应保持不可变，外部更新应通过替换文件完成。
 

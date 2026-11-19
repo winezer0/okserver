@@ -1,5 +1,11 @@
 import { Link } from "react-router";
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type Row } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+  type Row,
+} from "@tanstack/react-table";
 import { Download, File, Folder, Trash2 } from "lucide-react";
 import { apiURL, type FileEntry } from "../../lib/api";
 import { usePreferences } from "../../lib/preferences";
@@ -18,13 +24,38 @@ interface Props {
   onToggle: (path: string) => void;
   onDeletePath: (path: string) => void;
 }
-export function FileTable({ entries, total, directoryLink, allowDelete, selectMode, selected, onToggle, onDeletePath }: Props) {
+export function FileTable({
+  entries,
+  total,
+  directoryLink,
+  allowDelete,
+  selectMode,
+  selected,
+  onToggle,
+  onDeletePath,
+}: Props) {
   const [downloadStatus, setDownloadStatus] = useState("");
   const [downloading, setDownloading] = useState(false);
   const downloadController = useRef<AbortController | null>(null);
   const { t, locale } = usePreferences();
   const columns = [
-    ...(selectMode ? [{ id: "select", header: "", cell: ({ row }: { row: Row<FileEntry> }) => <input type="checkbox" aria-label={`${t("selectMode")} ${row.original.name}`} checked={selected.has(row.original.path)} onChange={() => onToggle(row.original.path)} className="size-4 accent-primary" /> }] : []),
+    ...(selectMode
+      ? [
+          {
+            id: "select",
+            header: "",
+            cell: ({ row }: { row: Row<FileEntry> }) => (
+              <input
+                type="checkbox"
+                aria-label={`${t("selectMode")} ${row.original.name}`}
+                checked={selected.has(row.original.path)}
+                onChange={() => onToggle(row.original.path)}
+                className="size-4 accent-primary"
+              />
+            ),
+          },
+        ]
+      : []),
     {
       accessorKey: "name",
       header: t("name"),
@@ -76,53 +107,69 @@ export function FileTable({ entries, total, directoryLink, allowDelete, selectMo
     {
       id: "action",
       header: t("action"),
-      cell: ({ row }) => <div className="flex items-center gap-3">
-        {row.original.is_dir ? (
-          <Link className="row-action" to={directoryLink(row.original.path)}>{t("open")}</Link>
-        ) : (
-          <a
-            className="row-action"
-            aria-label={`${t("download")} ${row.original.name}`}
-            download
-            href={apiURL(
-              `/download/${row.original.path.split("/").map(encodeURIComponent).join("/")}`,
-            )}
-            onClick={(event) => {
-              if (
-                !("showSaveFilePicker" in window) ||
-                !navigator.storage?.getDirectory ||
-                !navigator.locks
-              )
-                return;
-              event.preventDefault();
-              if (downloadController.current) return;
-              const active = new AbortController();
-              downloadController.current = active;
-              setDownloading(true);
-              setDownloadStatus(t("loading"));
-              void downloadVerified(
-                row.original.path,
-                row.original.name,
-                (text) => setDownloadStatus(`${row.original.name} · ${text}`),
-                active.signal,
-              )
-                .catch((error: unknown) =>
-                  setDownloadStatus(
-                    active.signal.aborted ? t("paused") : `${t("requestFailed")}: ${String(error)}`,
-                  ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          {row.original.is_dir ? (
+            <Link className="row-action" to={directoryLink(row.original.path)}>
+              {t("open")}
+            </Link>
+          ) : (
+            <a
+              className="row-action"
+              aria-label={`${t("download")} ${row.original.name}`}
+              download
+              href={apiURL(
+                `/download/${row.original.path.split("/").map(encodeURIComponent).join("/")}`,
+              )}
+              onClick={(event) => {
+                if (
+                  !("showSaveFilePicker" in window) ||
+                  !navigator.storage?.getDirectory ||
+                  !navigator.locks
                 )
-                .finally(() => {
-                  downloadController.current = null;
-                  setDownloading(false);
-                });
-            }}
-          >
-            <Download className="size-4" aria-hidden="true" />
-            <span className="sr-only">{t("download")}</span>
-          </a>
-        )}
-        {allowDelete && <Button type="button" variant="ghost" aria-label={`${t("deleteItem")} ${row.original.name}`} title={t("deleteItem")} onClick={() => onDeletePath(row.original.path)}><Trash2 className="size-4 text-destructive" aria-hidden="true" /></Button>}
-      </div>,
+                  return;
+                event.preventDefault();
+                if (downloadController.current) return;
+                const active = new AbortController();
+                downloadController.current = active;
+                setDownloading(true);
+                setDownloadStatus(t("loading"));
+                void downloadVerified(
+                  row.original.path,
+                  row.original.name,
+                  (text) => setDownloadStatus(`${row.original.name} · ${text}`),
+                  active.signal,
+                )
+                  .catch((error: unknown) =>
+                    setDownloadStatus(
+                      active.signal.aborted
+                        ? t("paused")
+                        : `${t("requestFailed")}: ${String(error)}`,
+                    ),
+                  )
+                  .finally(() => {
+                    downloadController.current = null;
+                    setDownloading(false);
+                  });
+              }}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              <span className="sr-only">{t("download")}</span>
+            </a>
+          )}
+          {allowDelete && (
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={`${t("deleteItem")} ${row.original.name}`}
+              title={t("deleteItem")}
+              onClick={() => onDeletePath(row.original.path)}
+            >
+              <Trash2 className="size-4 text-destructive" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+      ),
     },
   ] satisfies ColumnDef<FileEntry>[];
   const table = useReactTable({

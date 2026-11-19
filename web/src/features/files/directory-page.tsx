@@ -26,8 +26,13 @@ export function DirectoryPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deletePaths, setDeletePaths] = useState<string[] | null>(null);
   const [selectionNotice, setSelectionNotice] = useState("");
-  const capabilities = useQuery({ queryKey: ["capabilities"], queryFn: () => request("/api/v1/capabilities", capabilitiesSchema) });
-  useEffect(() => { setSelected(new Set()); }, [directory, model.page, model.search, model.sort, model.direction]);
+  const capabilities = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: () => request("/api/v1/capabilities", capabilitiesSchema),
+  });
+  useEffect(() => {
+    setSelected(new Set());
+  }, [directory, model.page, model.search, model.sort, model.direction]);
   return (
     <>
       <section
@@ -62,26 +67,38 @@ export function DirectoryPage() {
             allowDeleteFile={capabilities.data?.allow_delete_file === true}
             onCreateDirectory={() => setCreateOpen(true)}
             selectMode={selectMode}
-            onToggleSelectMode={() => { setSelectMode((value) => !value); setSelected(new Set()); }}
+            onToggleSelectMode={() => {
+              setSelectMode((value) => !value);
+              setSelected(new Set());
+            }}
             selectedCount={selected.size}
             pageCount={query.data?.entries.length || 0}
-            onSelectPage={() => setSelected((current) => {
-              const pagePaths = query.data?.entries.map((entry) => entry.path) || [];
-              const allSelected = pagePaths.length > 0 && pagePaths.every((path) => current.has(path));
-              const next = new Set(current);
-              pagePaths.forEach((path) => allSelected ? next.delete(path) : next.add(path));
-              return next;
-            })}
+            onSelectPage={() =>
+              setSelected((current) => {
+                const pagePaths = query.data?.entries.map((entry) => entry.path) || [];
+                const allSelected =
+                  pagePaths.length > 0 && pagePaths.every((path) => current.has(path));
+                const next = new Set(current);
+                pagePaths.forEach((path) => (allSelected ? next.delete(path) : next.add(path)));
+                return next;
+              })
+            }
             onDeleteSelected={() => setDeletePaths([...selected])}
             onDownloadSelected={() => {
-              const entries = (query.data?.entries || []).filter((entry) => selected.has(entry.path));
+              const entries = (query.data?.entries || []).filter((entry) =>
+                selected.has(entry.path),
+              );
               const files = entries.filter((entry) => !entry.is_dir);
               const skipped = entries.some((entry) => entry.is_dir);
               files.forEach((entry) => {
                 const link = document.createElement("a");
-                link.href = apiURL(`/download/${entry.path.split("/").map(encodeURIComponent).join("/")}`);
+                link.href = apiURL(
+                  `/download/${entry.path.split("/").map(encodeURIComponent).join("/")}`,
+                );
                 link.download = entry.name;
-                document.body.append(link); link.click(); link.remove();
+                document.body.append(link);
+                link.click();
+                link.remove();
               });
               setSelectionNotice(skipped ? t("skippedDirectories") : "");
             }}
@@ -90,7 +107,11 @@ export function DirectoryPage() {
               requestAnimationFrame(() => document.getElementById("choose-files")?.focus());
             }}
           />
-          {selectionNotice && <p role="status" className="rounded-md bg-muted p-3 text-sm">{selectionNotice}</p>}
+          {selectionNotice && (
+            <p role="status" className="rounded-md bg-muted p-3 text-sm">
+              {selectionNotice}
+            </p>
+          )}
           {query.isError && (
             <div role="alert" className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
               {t("requestFailed")}{" "}
@@ -106,7 +127,13 @@ export function DirectoryPage() {
             allowDelete={capabilities.data?.allow_delete_file === true}
             selectMode={selectMode}
             selected={selected}
-            onToggle={(path) => setSelected((current) => { const next = new Set(current); next.has(path) ? next.delete(path) : next.add(path); return next; })}
+            onToggle={(path) =>
+              setSelected((current) => {
+                const next = new Set(current);
+                next.has(path) ? next.delete(path) : next.add(path);
+                return next;
+              })
+            }
             onDeletePath={(path) => setDeletePaths([path])}
           />
           {query.isPending && (
@@ -124,8 +151,19 @@ export function DirectoryPage() {
           <DirectoryPagination model={model} />
         </Card>
         <UploadDialog directory={directory} open={open} onClose={() => setOpen(false)} />
-        <CreateDirectoryDialog directory={directory} open={createOpen} onClose={() => setCreateOpen(false)} refresh={() => void queryClient.invalidateQueries({ queryKey: ["files"] })} />
-        <DeleteConfirmDialog paths={deletePaths || []} open={deletePaths !== null} onClose={() => setDeletePaths(null)} refresh={() => void queryClient.invalidateQueries({ queryKey: ["files"] })} onDeleted={() => setSelected(new Set())} />
+        <CreateDirectoryDialog
+          directory={directory}
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          refresh={() => void queryClient.invalidateQueries({ queryKey: ["files"] })}
+        />
+        <DeleteConfirmDialog
+          paths={deletePaths || []}
+          open={deletePaths !== null}
+          onClose={() => setDeletePaths(null)}
+          refresh={() => void queryClient.invalidateQueries({ queryKey: ["files"] })}
+          onDeleted={() => setSelected(new Set())}
+        />
       </div>
     </>
   );

@@ -48,11 +48,36 @@ export function DirectoryToolbar({
               {t("upload")}
             </Button>
           )}
-          {allowCreateDir && onCreateDirectory && <Button id="create-directory" variant="outline" onClick={onCreateDirectory}>{t("createDirectory")}</Button>}
-          {onToggleSelectMode && <Button id="toggle-select-mode" variant="outline" aria-pressed={selectMode} onClick={onToggleSelectMode}>{selectMode ? t("exitSelectMode") : t("selectMode")}</Button>}
-          {selectMode && pageCount > 0 && onSelectPage && <Button id="select-page" variant="outline" onClick={onSelectPage}>{t("selectPage")}</Button>}
-          {selectedCount > 0 && onDownloadSelected && <Button id="download-selected" variant="outline" onClick={onDownloadSelected}>{t("downloadSelected")} ({selectedCount})</Button>}
-          {allowDeleteFile && selectedCount > 0 && onDeleteSelected && <Button id="delete-selected" variant="destructive" onClick={onDeleteSelected}>{t("deleteSelected")} ({selectedCount})</Button>}
+          {allowCreateDir && onCreateDirectory && (
+            <Button id="create-directory" variant="outline" onClick={onCreateDirectory}>
+              {t("createDirectory")}
+            </Button>
+          )}
+          {onToggleSelectMode && (
+            <Button
+              id="toggle-select-mode"
+              variant="outline"
+              aria-pressed={selectMode}
+              onClick={onToggleSelectMode}
+            >
+              {selectMode ? t("exitSelectMode") : t("selectMode")}
+            </Button>
+          )}
+          {selectMode && pageCount > 0 && onSelectPage && (
+            <Button id="select-page" variant="outline" onClick={onSelectPage}>
+              {t("selectPage")}
+            </Button>
+          )}
+          {selectedCount > 0 && onDownloadSelected && (
+            <Button id="download-selected" variant="outline" onClick={onDownloadSelected}>
+              {t("downloadSelected")} ({selectedCount})
+            </Button>
+          )}
+          {allowDeleteFile && selectedCount > 0 && onDeleteSelected && (
+            <Button id="delete-selected" variant="destructive" onClick={onDeleteSelected}>
+              {t("deleteSelected")} ({selectedCount})
+            </Button>
+          )}
           <Button
             id="up-directory"
             variant="outline"
