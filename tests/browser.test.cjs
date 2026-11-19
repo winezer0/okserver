@@ -193,6 +193,11 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
       if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
       return result.result.value;
     };
+    const click = async selector => {
+      const query = `document.querySelector(${JSON.stringify(selector)})`;
+      await until(() => evaluate(`${query}!==null`));
+      await evaluate(`${query}?.click()`);
+    };
     await send("Page.enable");
     await send("Network.enable");
     await send("Runtime.enable");
@@ -216,9 +221,9 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
         if(message.type==='digest')finish(message.digest==='${expectedWorkerDigest}'?undefined:new Error('checksum worker full digest mismatch'));};
       worker.postMessage({id:1,type:'reset',file:new Blob([new Uint8Array(${workerPrefixSize}).fill(17),'worker']),offset:${workerPrefixSize}});})`);
     if (process.env.OKSERVER_BROWSER_WORKER_ONLY === "1") return;
-    await evaluate("document.getElementById('language-toggle').click()");
+    await click("#language-toggle");
     await until(() => evaluate("document.documentElement.lang==='en' && document.querySelector('h1').textContent==='File workspace'"));
-    await evaluate("document.getElementById('theme-toggle').click()");
+    await click("#theme-toggle");
     await until(() => evaluate("document.documentElement.classList.contains('dark')"));
     assert.equal(await evaluate("document.getElementById('toggle-transfers')===null"), true);
     await evaluate("Array.from(document.querySelectorAll('.entry-name')).find(e=>e.textContent==='nested space').click()");
@@ -239,7 +244,7 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
       fs.writeFileSync(hmrFile, ":root{--okserver-test-token:2}");
       await until(() => evaluate("getComputedStyle(document.documentElement).getPropertyValue('--okserver-test-token').trim()==='2'"));
     }
-    await evaluate("document.getElementById('next-page').click()");
+    await click("#next-page");
     await until(() => evaluate("document.getElementById('page-summary').textContent.includes('2') && document.querySelectorAll('#listing tr').length === 100"));
     await evaluate("Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(document.getElementById('search-files'),'entry-239'); document.getElementById('search-files').dispatchEvent(new Event('input',{bubbles:true}))");
     await until(() => evaluate("document.querySelectorAll('#listing tr').length===1 && document.getElementById('listing').textContent.includes('entry-239')"));
@@ -266,14 +271,14 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     await send("Page.navigate", { url: base + "/tasks" });
     await until(() => evaluate("document.querySelector('[data-testid=event-status]')!==null"));
     await evaluate(`await fetch('/upload/cancel.bin',{method:'PUT',headers:{'Content-Range':'bytes 0-0/123'},body:'a'});
-      document.getElementById('refresh-tasks').click();`);
+      document.getElementById('refresh-tasks')?.click();`);
     await until(() => evaluate("document.querySelector('article button')!==null"));
-    await evaluate("document.querySelector('article button').click()");
+    await click("article button");
     await until(async () => (await (await fetch(base + "/api/v1/uploads")).json()).uploads.length === 0);
 
     await send("Page.navigate", { url: base });
     await until(() => evaluate("document.getElementById('open-upload')!==null"));
-    await evaluate("document.getElementById('open-upload').click()");
+    await click("#open-upload");
     assert.equal(await evaluate("document.querySelector('dialog').open"), true);
     await selectFile();
     stage = "browser upload pause and worker response";
@@ -332,7 +337,7 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
       uploadToken,
       "browser restart lost the upload token",
     );
-    await evaluate("document.getElementById('open-upload').click()");
+    await click("#open-upload");
     await selectFile();
     stage = "resumed upload recovery";
     await evaluate(`window.testOriginalFetch=window.fetch;window.testChunkRequests=0;
