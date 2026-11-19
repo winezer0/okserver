@@ -38,7 +38,9 @@ jobs:
         working-directory: web
       - name: Check committed embedded assets
         shell: bash
-        run: test -z "$(git status --porcelain -- internal/webui/assets)"
+        run: |
+          git status --short -- internal/webui/assets
+          test -z "$(git status --porcelain -- internal/webui/assets)"
 
   transfer:
     needs: frontend
