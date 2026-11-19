@@ -24,6 +24,9 @@ type fileServer struct {
 	auth                string
 	param               string
 	deny                bool
+	disableFrontUI      bool
+	allowCreateDir      bool
+	allowDeleteFile     bool
 	logger              observability.RequestLogger
 	uploads             *upload.Manager
 	hashes              *hashmanifest.Store

@@ -32,7 +32,7 @@ func TestVersionedAPIAndSPALinks(t *testing.T) {
 			t.Fatalf("contract mismatch: %+v %v", data, err)
 		}
 	}
-	response, err := http.Get(server.URL + "/workspace/files/nested")
+	response, err := http.Get(server.URL + "/files/nested")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,6 +50,35 @@ func TestVersionedAPIAndSPALinks(t *testing.T) {
 		if response.StatusCode != 405 {
 			t.Fatalf("invalid metadata accepted: %s", body)
 		}
+	}
+}
+
+func TestDenyDisablesFrontendPagesAndAssets(t *testing.T) {
+	root := t.TempDir()
+	manager, err := upload.NewManager(upload.Config{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs := &fileServer{path: root, uploads: manager, disableFrontUI: true}
+	server := httptest.NewServer(fs)
+	defer server.Close()
+	for _, endpoint := range []string{"/", "/files", "/files/nested", "/tasks", "/app.js", "/app.css", "/favicon.ico"} {
+		response, err := http.Get(server.URL + endpoint)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusForbidden {
+			t.Errorf("%s status %d, want %d", endpoint, response.StatusCode, http.StatusForbidden)
+		}
+	}
+	response, err := http.Get(server.URL + "/api/v1/capabilities")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("API status %d, want %d", response.StatusCode, http.StatusOK)
 	}
 }
 

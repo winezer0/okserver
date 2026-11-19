@@ -7,12 +7,14 @@
 ## 功能
 
 - 浏览器文件工作台：目录浏览、分页、搜索和排序；中英文界面与明暗主题。
+- 页面地址：`/files`、`/files/<目录>` 和 `/tasks`；根路径 `/` 默认进入文件页。
 - 浏览器上传：多文件有界并发、单文件串行分片、暂停/恢复/取消、自动重试；使用 SHA-256 校验分片及完整文件，恢复前校验已确认前缀。
 - 浏览器下载：支持原生下载；支持 File System Access API 的浏览器可使用 OPFS 持久暂存、分片恢复和完整 SHA-256 校验后导出。传输中心可查看、恢复和清理暂存任务。
 - HTTP 上传：原始 POST、单文件 multipart POST，以及带 `Content-Range` 的串行 PUT 分片/续传，适用于 curl、wget 等客户端。
 - HTTP 下载：HEAD、Range、If-Range、ETag 和完整文件 SHA-256 响应头。
 - CLI：上传自动续传；下载默认四路 Range 并发，校验 SHA-256 后原子替换目标文件。
 - 服务管理：Basic Auth 或 URL 参数认证、TLS、同源/CORS 控制、SSE 任务事件、健康检查、指标及结构化日志。
+- 可选文件管理：通过 `server.allow_create_dir` 与 `server.allow_delete_file` 分别启用单级目录创建和文件/目录递归删除；浏览器支持本页多选、批量删除与多文件下载。
 - 可靠性与资源控制：JSON 持久化上传任务和摘要清单、启动恢复、磁盘空间预算、并发/任务/暂存上限、过期清理和原子发布。
 
 前端使用 React、严格 TypeScript、Vite、Tailwind、React Router、TanStack Query/Table、Base UI 和 hash-wasm；后端使用 Go、Gin 和标准库。服务不依赖数据库或 Redis。
@@ -64,6 +66,9 @@ okserver --version
 | 配置 | 默认值 | 说明 |
 |---|---:|---|
 | `server.listen` / `server.path` | `:28080` / `./uploads` | 监听地址与文件根目录 |
+| `server.allow_create_dir` | `false` | 启用浏览器单级目录创建 |
+| `server.allow_delete_file` | `false` | 启用浏览器文件及目录递归删除 |
+| `server.disable_front_ui` | `false` | 禁止访问浏览器前端页面和静态资源 |
 | `upload.chunk_size` | 8 MiB | 上传分片大小；配置为 0 时使用默认值 |
 | `upload.max_concurrent` | 4 | 全局上传并发 |
 | `upload.max_per_identity` | 32 | 每个身份的活动任务上限 |
@@ -127,6 +132,9 @@ okserver cli -auth "user:password" -ca ca.crt -c -d @file.zip "https://server/up
 | `/upload/<filename>` | DELETE | 取消未发布的上传 |
 | `/download/<filename>` | GET / HEAD | 文件下载、Range、版本与完整文件摘要 |
 | `/api/v1/files` | GET | 文件列表、分页、搜索和排序 |
+| `/api/v1/capabilities` | GET | 当前实例启用的目录创建和删除能力 |
+| `/api/v1/create` | POST | 在指定父目录下创建单级目录（需 `allow_create_dir`） |
+| `/api/v1/delete` | POST | 批量删除文件或递归删除目录（需 `allow_delete_file`） |
 | `/api/v1/uploads` | GET | 活动上传任务列表 |
 | `/api/v1/uploads/<id>` | GET / DELETE | 查询或取消任务 |
 | `/api/v1/uploads/cleanup` | POST | 清理过期记录 |

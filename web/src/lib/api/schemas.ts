@@ -37,3 +37,7 @@ export const directorySchema = z.object({
 });
 export type FileEntry = z.infer<typeof entrySchema>;
 export type Directory = z.infer<typeof directorySchema>;
+export const capabilitiesSchema = z.object({
+  allow_create_dir: z.boolean(),
+  allow_delete_file: z.boolean(),
+});

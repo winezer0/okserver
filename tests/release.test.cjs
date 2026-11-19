@@ -69,7 +69,7 @@ test("standalone embedded binary, version, authentication and invalid configurat
       await delay(100);
     }
     assert.ok(ready, output);
-    const page = await fetch(base + "/workspace/files/nested", { headers });
+    const page = await fetch(base + "/files/nested", { headers });
     assert.equal(page.status, 200);
     const html = await page.text();
     const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map(match => match[1]);

@@ -29,7 +29,7 @@ export function Layout() {
         {t("skip")}
       </a>
       <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-border py-3">
-        <Link to={`/workspace/files${location.search}`} className="flex items-center gap-3">
+        <Link to={`/files${location.search}`} className="flex items-center gap-3">
           <span className="rounded-xl bg-primary p-2.5 text-primary-foreground">
             <FolderUp className="size-6" aria-hidden="true" />
           </span>
@@ -43,15 +43,15 @@ export function Layout() {
         <nav className="flex flex-wrap items-center gap-2" aria-label={t("navigation")}>
           <Link
             className="nav-link"
-            aria-current={location.pathname.startsWith("/workspace/files") ? "page" : undefined}
-            to={`/workspace/files${location.search}`}
+            aria-current={location.pathname.startsWith("/files") ? "page" : undefined}
+            to={`/files${location.search}`}
           >
             {t("files")}
           </Link>
           <Link
             className="nav-link"
             aria-current={location.pathname.endsWith("/tasks") ? "page" : undefined}
-            to={`/workspace/tasks${location.search}`}
+            to={`/tasks${location.search}`}
           >
             {locale === "zh" ? "传输中心" : "Transfer center"}
           </Link>
@@ -113,7 +113,7 @@ function InitialRoute() {
   return (
     <Navigate
       replace
-      to={`/workspace/files${directory ? "/" + directory.split("/").map(encodeURIComponent).join("/") : ""}${parameters.size ? "?" + parameters : ""}`}
+      to={`/files${directory ? "/" + directory.split("/").map(encodeURIComponent).join("/") : ""}${parameters.size ? "?" + parameters : ""}`}
     />
   );
 }
@@ -123,7 +123,7 @@ export function ErrorPage() {
   return (
     <main className="mx-auto max-w-lg px-5 py-24 text-center">
       <h1 className="text-2xl font-semibold">{t(error ? "error" : "notFound")}</h1>
-      <Link className="nav-link mt-6 inline-block text-primary" to="/workspace/files">
+      <Link className="nav-link mt-6 inline-block text-primary" to="/files">
         {t("back")}
       </Link>
     </main>
@@ -132,7 +132,7 @@ export function ErrorPage() {
 export const routes = [
   { path: "/", element: <InitialRoute /> },
   {
-    path: "/workspace",
+    path: "/",
     element: <Layout />,
     errorElement: <ErrorPage />,
     children: [

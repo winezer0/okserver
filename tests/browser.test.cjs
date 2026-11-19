@@ -263,7 +263,7 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     };
 
     stage = "browser upload cancellation";
-    await send("Page.navigate", { url: base + "/workspace/tasks" });
+    await send("Page.navigate", { url: base + "/tasks" });
     await until(() => evaluate("document.querySelector('[data-testid=event-status]')!==null"));
     await evaluate(`await fetch('/upload/cancel.bin',{method:'PUT',headers:{'Content-Range':'bytes 0-0/123'},body:'a'});
       document.getElementById('refresh-tasks').click();`);

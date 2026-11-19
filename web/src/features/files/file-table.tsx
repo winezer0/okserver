@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
-import { Download, File, Folder } from "lucide-react";
+import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type Row } from "@tanstack/react-table";
+import { Download, File, Folder, Trash2 } from "lucide-react";
 import { apiURL, type FileEntry } from "../../lib/api";
 import { usePreferences } from "../../lib/preferences";
 import { formatBytes } from "../../lib/utils";
@@ -12,13 +12,19 @@ interface Props {
   entries: FileEntry[];
   total: number;
   directoryLink: (path: string) => string;
+  allowDelete: boolean;
+  selectMode: boolean;
+  selected: Set<string>;
+  onToggle: (path: string) => void;
+  onDeletePath: (path: string) => void;
 }
-export function FileTable({ entries, total, directoryLink }: Props) {
+export function FileTable({ entries, total, directoryLink, allowDelete, selectMode, selected, onToggle, onDeletePath }: Props) {
   const [downloadStatus, setDownloadStatus] = useState("");
   const [downloading, setDownloading] = useState(false);
   const downloadController = useRef<AbortController | null>(null);
   const { t, locale } = usePreferences();
   const columns = [
+    ...(selectMode ? [{ id: "select", header: "", cell: ({ row }: { row: Row<FileEntry> }) => <input type="checkbox" aria-label={`${t("selectMode")} ${row.original.name}`} checked={selected.has(row.original.path)} onChange={() => onToggle(row.original.path)} className="size-4 accent-primary" /> }] : []),
     {
       accessorKey: "name",
       header: t("name"),
@@ -70,11 +76,9 @@ export function FileTable({ entries, total, directoryLink }: Props) {
     {
       id: "action",
       header: t("action"),
-      cell: ({ row }) =>
-        row.original.is_dir ? (
-          <Link className="row-action" to={directoryLink(row.original.path)}>
-            {t("open")}
-          </Link>
+      cell: ({ row }) => <div className="flex items-center gap-3">
+        {row.original.is_dir ? (
+          <Link className="row-action" to={directoryLink(row.original.path)}>{t("open")}</Link>
         ) : (
           <a
             className="row-action"
@@ -116,7 +120,9 @@ export function FileTable({ entries, total, directoryLink }: Props) {
             <Download className="size-4" aria-hidden="true" />
             <span className="sr-only">{t("download")}</span>
           </a>
-        ),
+        )}
+        {allowDelete && <Button type="button" variant="ghost" aria-label={`${t("deleteItem")} ${row.original.name}`} title={t("deleteItem")} onClick={() => onDeletePath(row.original.path)}><Trash2 className="size-4 text-destructive" aria-hidden="true" /></Button>}
+      </div>,
     },
   ] satisfies ColumnDef<FileEntry>[];
   const table = useReactTable({

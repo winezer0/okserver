@@ -7,12 +7,14 @@ A browser file workspace and command-line transfer tool. A single Go executable 
 ## Features
 
 - Browser workspace with directory browsing, pagination, search, sorting, Chinese/English UI, and light/dark themes.
+- Page routes are `/files`, `/files/<directory>`, and `/tasks`; `/` opens the file page.
 - Browser uploads with bounded concurrency across files and serial chunks per file; pause, resume, cancel, and retry. SHA-256 checks cover chunks and complete files, and resume validates the acknowledged prefix.
 - Browser downloads use native browser downloads by default. Browsers supporting the File System Access API can use OPFS staging, resumable chunks, and full SHA-256 verification before export. The transfer center can inspect, resume, and clean staged tasks.
 - HTTP uploads support raw POST, single-file multipart POST, and serial PUT chunks/resume with `Content-Range`, for clients such as curl and wget.
 - HTTP downloads support HEAD, Range, If-Range, ETag, and a full-file SHA-256 response header.
 - CLI uploads resume automatically. Downloads use four concurrent Range requests by default, verify SHA-256, then atomically replace the target.
 - Basic Auth or URL-parameter authentication, TLS, same-origin/CORS controls, SSE task events, health checks, metrics, and structured logs.
+- Optional file management: `server.allow_create_dir` enables single-level directory creation and `server.allow_delete_file` enables file and recursive directory deletion; the browser supports page selection, batch deletion, and multi-file downloads.
 - Reliability and resource controls include JSON-persisted upload tasks and digest manifests, startup recovery, disk-space budgeting, concurrency/session/staging limits, expiration cleanup, and atomic publication.
 
 The frontend uses React, strict TypeScript, Vite, Tailwind, React Router, TanStack Query/Table, Base UI, and hash-wasm. The backend uses Go, Gin, and the standard library. No database or Redis is required.
@@ -64,6 +66,9 @@ Authentication uses `server.auth: "user:password"` (HTTP Basic) or `server.param
 | Setting | Default | Description |
 |---|---:|---|
 | `server.listen` / `server.path` | `:28080` / `./uploads` | Listen address and file root |
+| `server.allow_create_dir` | `false` | Enable single-level directory creation in the browser |
+| `server.allow_delete_file` | `false` | Enable browser file and recursive directory deletion |
+| `server.disable_front_ui` | `false` | Disable browser pages and frontend assets |
 | `upload.chunk_size` | 8 MiB | Upload chunk size; zero selects the default |
 | `upload.max_concurrent` | 4 | Global upload concurrency |
 | `upload.max_per_identity` | 32 | Active tasks per identity |
@@ -127,6 +132,9 @@ Browser and CLI retry network errors, 408, 423, 429, and 5xx with bounded backof
 | `/upload/<filename>` | DELETE | Cancel an unpublished upload |
 | `/download/<filename>` | GET / HEAD | Download, Range, version, and full-file digest |
 | `/api/v1/files` | GET | File listing, pagination, search, and sorting |
+| `/api/v1/capabilities` | GET | Enabled directory-creation and deletion capabilities |
+| `/api/v1/create` | POST | Create one directory under a parent (requires `allow_create_dir`) |
+| `/api/v1/delete` | POST | Batch-delete files or recursively delete directories (requires `allow_delete_file`) |
 | `/api/v1/uploads` | GET | Active upload tasks |
 | `/api/v1/uploads/<id>` | GET / DELETE | Query or cancel a task |
 | `/api/v1/uploads/cleanup` | POST | Clean expired records |

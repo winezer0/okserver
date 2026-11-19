@@ -48,6 +48,16 @@ func (fs *fileServer) routes() http.Handler {
 	{
 		const prefix = "/api/v1"
 		bind("GET", prefix+"/files", fs.handleFileList)
+		bind("GET", prefix+"/capabilities", fs.handleCapabilities)
+		for _, route := range []struct {
+			method, path string
+			handler      http.HandlerFunc
+		}{
+			{"POST", "/create", fs.handleCreateDirectory},
+			{"POST", "/delete", fs.handleDeletePaths},
+		} {
+			router.Handle(route.method, prefix+route.path, fs.endpoint(route.handler, false))
+		}
 		for _, route := range []struct {
 			method, path string
 			handler      http.HandlerFunc
@@ -81,7 +91,7 @@ func (fs *fileServer) routes() http.Handler {
 	bind("HEAD", "/metrics", fs.metrics.ServeHTTP)
 	bind("GET", "/", fs.handleIndex)
 	bind("HEAD", "/", fs.handleIndex)
-	for _, path := range []string{"/workspace", "/workspace/*path"} {
+	for _, path := range []string{"/files", "/files/*path", "/tasks"} {
 		bind("GET", path, webui.Index)
 		bind("HEAD", path, webui.Index)
 	}

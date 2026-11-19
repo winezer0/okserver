@@ -208,7 +208,7 @@ export function TransferPage() {
             <p className="text-sm text-muted-foreground">
               {zh ? "上传和下载的任务将在这里显示。" : "Uploads and downloads appear here."}
             </p>
-            <Link className="nav-link inline-block" to={`/workspace/files${search}`}>
+            <Link className="nav-link inline-block" to={`/files${search}`}>
               {zh ? "前往文件浏览" : "Browse files"}
             </Link>
           </div>

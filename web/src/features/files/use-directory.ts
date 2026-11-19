@@ -41,7 +41,7 @@ export function useDirectory() {
       ),
   });
   const directoryLink = (path: string) =>
-    `/workspace/files${path ? "/" + path.split("/").map(encodeURIComponent).join("/") : ""}${authSearch(parameters)}`;
+    `/files${path ? "/" + path.split("/").map(encodeURIComponent).join("/") : ""}${authSearch(parameters)}`;
   const parts = directory.split("/").filter(Boolean);
   return {
     navigate,

@@ -8,9 +8,29 @@ import type { DirectoryModel } from "./use-directory";
 export function DirectoryToolbar({
   model,
   onUpload,
+  allowCreateDir = false,
+  allowDeleteFile = false,
+  onCreateDirectory,
+  selectedCount = 0,
+  pageCount = 0,
+  selectMode = false,
+  onToggleSelectMode,
+  onSelectPage,
+  onDeleteSelected,
+  onDownloadSelected,
 }: {
   model: DirectoryModel;
   onUpload?: () => void;
+  allowCreateDir?: boolean;
+  allowDeleteFile?: boolean;
+  onCreateDirectory?: () => void;
+  selectedCount?: number;
+  pageCount?: number;
+  selectMode?: boolean;
+  onToggleSelectMode?: () => void;
+  onSelectPage?: () => void;
+  onDeleteSelected?: () => void;
+  onDownloadSelected?: () => void;
 }) {
   const { t } = usePreferences();
   const { directory, navigate, directoryLink, parts, query, search, sort, direction, update } =
@@ -28,6 +48,11 @@ export function DirectoryToolbar({
               {t("upload")}
             </Button>
           )}
+          {allowCreateDir && onCreateDirectory && <Button id="create-directory" variant="outline" onClick={onCreateDirectory}>{t("createDirectory")}</Button>}
+          {onToggleSelectMode && <Button id="toggle-select-mode" variant="outline" aria-pressed={selectMode} onClick={onToggleSelectMode}>{selectMode ? t("exitSelectMode") : t("selectMode")}</Button>}
+          {selectMode && pageCount > 0 && onSelectPage && <Button id="select-page" variant="outline" onClick={onSelectPage}>{t("selectPage")}</Button>}
+          {selectedCount > 0 && onDownloadSelected && <Button id="download-selected" variant="outline" onClick={onDownloadSelected}>{t("downloadSelected")} ({selectedCount})</Button>}
+          {allowDeleteFile && selectedCount > 0 && onDeleteSelected && <Button id="delete-selected" variant="destructive" onClick={onDeleteSelected}>{t("deleteSelected")} ({selectedCount})</Button>}
           <Button
             id="up-directory"
             variant="outline"

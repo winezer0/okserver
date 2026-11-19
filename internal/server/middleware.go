@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 )
 
 func (fs *fileServer) middleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -11,6 +12,10 @@ func (fs *fileServer) middleware(w http.ResponseWriter, r *http.Request, next ht
 	if r.Body != nil {
 		//goland:noinspection GoUnhandledErrorResult
 		defer r.Body.Close()
+	}
+	if fs.disableFrontUI && isFrontendRequest(r.URL.Path) {
+		writeAPIError(w, http.StatusForbidden, "frontend access is disabled", nil)
+		return
 	}
 	if serveStatic(w, r) {
 		return
@@ -31,4 +36,9 @@ func (fs *fileServer) middleware(w http.ResponseWriter, r *http.Request, next ht
 	}
 
 	next(w, r)
+}
+
+func isFrontendRequest(path string) bool {
+	return path == "/" || path == "/files" || strings.HasPrefix(path, "/files/") || path == "/tasks" ||
+		path == "/app.js" || path == "/app.css" || path == "/favicon.ico" || strings.HasPrefix(path, "/assets/")
 }

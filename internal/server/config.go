@@ -28,6 +28,9 @@ type httpConfig struct {
 	Auth              string            `yaml:"auth"`
 	Param             string            `yaml:"param"`
 	Deny              bool              `yaml:"deny"`
+	DisableFrontUI    bool              `yaml:"disable_front_ui"`
+	AllowCreateDir    bool              `yaml:"allow_create_dir"`
+	AllowDeleteFile   bool              `yaml:"allow_delete_file"`
 	ReadHeaderTimeout string            `yaml:"read_header_timeout"`
 	Certificate       certificateConfig `yaml:"certificate"`
 }

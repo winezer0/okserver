@@ -6,6 +6,9 @@ server:
   auth: ""
   param: ""
   deny: false
+  disable_front_ui: false
+  allow_create_dir: false
+  allow_delete_file: false
   read_header_timeout: 10s
   certificate:
     domain: ""
