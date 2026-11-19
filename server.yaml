@@ -1,0 +1,51 @@
+# Omitted fields use built-in defaults. Old root-level fields and log.logger are rejected.
+server:
+  # Optional exact cross-origin frontend origins, e.g. allowed_origins: ["https://files.example.com"]
+  listen: ":28080"
+  path: "./uploads"
+  auth: ""
+  param: ""
+  deny: false
+  read_header_timeout: 10s
+  certificate:
+    domain: ""
+    cert: ""
+    key: ""
+    ca: ""
+
+upload:
+  idle_timeout: 2m
+  session_ttl: 24h
+  terminal_ttl: 168h
+  verify_workers: 2
+  chunk_size: 8388608
+  # 0 disables the file size or corresponding resource limit.
+  max_file_size: 0
+  max_concurrent: 4
+  max_per_identity: 32
+  buffer_budget_bytes: 67108864
+  max_sessions: 128
+  max_pending_bytes: 107374182400
+  min_free_disk_bytes: 1073741824
+
+download:
+  max_concurrent: 16
+
+log:
+  console:
+    # text, json, off, or a TLCM mask (for example TLCM or CM).
+    format: text
+    level: info
+  file:
+    # Empty path disables file output; set a path to enable it.
+    path: ""
+    format: json
+    level: info
+    # Maximum file size in MiB; 0 uses the library default of 100 MiB.
+    max_size: 100
+    # 0 disables the age/count retention limit.
+    max_age: 1
+    max_backups: 10
+    # Only affects the timestamps in rotated backup filenames.
+    localtime: false
+    compress: false

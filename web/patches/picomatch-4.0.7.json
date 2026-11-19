@@ -1,0 +1,21 @@
+{
+  "advisory": "GHSA-fc5q-39xc-vjpf",
+  "version": "4.0.7",
+  "file": "lib/parse.js",
+  "originalSha256": "4e1e05447668aa1e94366c5516a2bcd8f5fff800cc92b1d0cd7d77703b8618c4",
+  "patchedSha256": "333aa428a5acdf99c8d70b21904994c9d09fcc0140afdac5610e8135c69e2f09",
+  "edits": [
+    {
+      "before": "const analyzeRepeatedExtglob = (body, options) => {\n  if (options.maxExtglobRecursion === false) {\n    return { risky: false };\n  }",
+      "after": "// Local mitigation for CVE-2026-112366. Ignore escaped/quoted characters and\n// character classes; only unbounded operators inside repeated bodies are risky.\nconst hasUnboundedRepeat = body => {\n  let escaped = false;\n  let quoted = false;\n  let bracket = false;\n\n  for (let index = 0; index < body.length; index++) {\n    const ch = body[index];\n    if (escaped) {\n      escaped = false;\n      continue;\n    }\n    if (ch === '\\\\') {\n      escaped = true;\n      continue;\n    }\n    if (ch === '\"' && !bracket) {\n      quoted = !quoted;\n      continue;\n    }\n    if (quoted) continue;\n    if (ch === '[') {\n      bracket = true;\n      continue;\n    }\n    if (ch === ']' && bracket) {\n      bracket = false;\n      continue;\n    }\n    if (!bracket && (ch === '*' || ch === '+' || (ch === '!' && body[index + 1] === '('))) {\n      return true;\n    }\n  }\n  return false;\n};\n\nconst analyzeRepeatedExtglob = (body, options) => {\n  const branches = splitTopLevel(body).map(branch => branch.trim());\n  const singleBranchRisk = branches.length === 1 && hasUnboundedRepeat(branches[0]);\n\n  if (options.maxExtglobRecursion === false) {\n    return { risky: singleBranchRisk };\n  }"
+    },
+    {
+      "before": "  const branches = splitTopLevel(body).map(branch => branch.trim());\n\n  if (branches.length > 1) {",
+      "after": "  if (branches.length > 1) {"
+    },
+    {
+      "before": "  return { risky: false };\n};\n\n/**\n * Parse the given input string.",
+      "after": "  return { risky: singleBranchRisk };\n};\n\n/**\n * Parse the given input string."
+    }
+  ]
+}
