@@ -190,13 +190,26 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     const evaluate = async expression => {
       const code = expression.includes("\n") ? "(async()=>{" + expression + "})()" : expression;
       const result = await send("Runtime.evaluate", { expression:code, awaitPromise: true, returnByValue: true });
-      if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
+      if (result.exceptionDetails) throw new Error(`${JSON.stringify(result.exceptionDetails)} expression=${code.slice(0, 200)}`);
       return result.result.value;
     };
     const click = async selector => {
       const query = `document.querySelector(${JSON.stringify(selector)})`;
-      await until(() => evaluate(`${query}!==null`));
-      await evaluate(`${query}?.click()`);
+      await until(() => evaluate(`(()=>{
+        const element=${query};
+        if(!element)return false;
+        element.click();
+        return true;
+      })()`));
+    };
+    const clickText = async (selector, text) => {
+      const query = `Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find(element=>element.textContent===${JSON.stringify(text)})`;
+      await until(() => evaluate(`(()=>{
+        const element=${query};
+        if(!element)return false;
+        element.click();
+        return true;
+      })()`));
     };
     await send("Page.enable");
     await send("Network.enable");
@@ -226,11 +239,11 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     await click("#theme-toggle");
     await until(() => evaluate("document.documentElement.classList.contains('dark')"));
     assert.equal(await evaluate("document.getElementById('toggle-transfers')===null"), true);
-    await evaluate("Array.from(document.querySelectorAll('.entry-name')).find(e=>e.textContent==='nested space').click()");
+    await clickText(".entry-name", "nested space");
     await until(() => evaluate("location.pathname.endsWith('/nested%20space') && document.getElementById('listing').textContent.includes('inside.txt')"));
     await send("Page.reload");
     await until(() => evaluate("document.getElementById('listing')?.textContent.includes('inside.txt') && document.documentElement.lang==='en' && document.documentElement.classList.contains('dark')"));
-    await evaluate("document.querySelector('#breadcrumbs a').click()");
+    await click("#breadcrumbs a");
     await until(() => evaluate("document.querySelectorAll('#listing tr').length === 100"));
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true, "mobile page overflows horizontally");
