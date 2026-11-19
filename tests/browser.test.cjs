@@ -292,6 +292,8 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     await delay(500);
     const tasks = await (await fetch(base + "/api/v1/uploads")).json();
     assert.equal(tasks.uploads[0].offset, 8 * 1024 * 1024);
+    const uploadToken = await evaluate("localStorage.getItem('okserver:upload-token:'+location.origin+':browser.bin')");
+    assert.match(uploadToken, /^[a-f0-9]{32}$/, "browser upload token was not persisted");
     if (!externalURL) {
       stage = "server restart with partial browser upload";
       await terminate(server);
@@ -302,9 +304,12 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
       t.diagnostic("Server restart preserved the upload ID and acknowledged offset");
     }
     stage = "browser restart and upload resume";
+    const browserExited = new Promise(resolve => browser.once("exit", resolve));
+    try { await cdp.send("Browser.close"); } catch {}
     cdp.close();
     cdp = undefined;
-    await terminate(browser);
+    await Promise.race([browserExited, delay(5000)]);
+    if (browser.exitCode === null && browser.signalCode === null) await terminate(browser);
     fs.rmSync(activePort, { force: true });
     browser = spawn(browserExecutable(), ["--headless=new", "--no-sandbox",
       "--disable-gpu", "--disable-background-networking", "--no-first-run",
@@ -322,6 +327,11 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     await send("Runtime.enable");
     await send("Debugger.enable");
     await until(() => evaluate("document.querySelectorAll('#listing tr').length===100"));
+    assert.equal(
+      await evaluate("localStorage.getItem('okserver:upload-token:'+location.origin+':browser.bin')"),
+      uploadToken,
+      "browser restart lost the upload token",
+    );
     await evaluate("document.getElementById('open-upload').click()");
     await selectFile();
     stage = "resumed upload recovery";
