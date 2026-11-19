@@ -369,8 +369,9 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
       const originalWriter=await original.createWritable();await originalWriter.write('original destination');await originalWriter.close();
       window.pauseDownloadObserver=new MutationObserver(()=>{if(Array.from(document.querySelectorAll('[role=status]')).some(e=>/1\\/\\d+$/.test(e.textContent))){
         window.pauseDownloadObserver.disconnect();Array.from(document.querySelectorAll('button')).find(e=>e.textContent.toLowerCase().includes('cancel')&&e.textContent.toLowerCase().includes('download'))?.click();}});
-      window.pauseDownloadObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
-      document.getElementById('refresh-files').click();`);
+      window.pauseDownloadObserver.observe(document.body,{subtree:true,childList:true,characterData:true});`);
+    await until(() => evaluate("document.getElementById('refresh-files')!==null"));
+    await evaluate("document.getElementById('refresh-files')?.click()");
     stage = "locate browser download action";
     await until(()=>evaluate("Array.from(document.querySelectorAll('a.row-action')).some(e=>e.getAttribute('aria-label')?.endsWith('browser.bin'))"));
     await evaluate("Array.from(document.querySelectorAll('a.row-action')).find(e=>e.getAttribute('aria-label')?.endsWith('browser.bin')).click()");
@@ -382,7 +383,9 @@ test("real browser large-file hashing, retry, cancellation and server/browser re
     await evaluate(`const originalFetch=window.fetch;window.testRanges=0;
       window.fetch=(...args)=>{if(args[1]?.headers?.Range)window.testRanges++;return originalFetch(...args);};
       window.showSaveFilePicker=async()=>{const root=await navigator.storage.getDirectory();const handle=await root.getFileHandle('browser-download.bin',{create:true});window.testDownloadHandle=handle;return handle;};
-      document.getElementById('refresh-files').click();`);
+      `);
+    await until(() => evaluate("document.getElementById('refresh-files')!==null"));
+    await evaluate("document.getElementById('refresh-files')?.click()");
     await until(()=>evaluate("Array.from(document.querySelectorAll('a.row-action')).some(e=>e.getAttribute('aria-label')?.endsWith('browser.bin'))"));
     await evaluate("Array.from(document.querySelectorAll('a.row-action')).find(e=>e.getAttribute('aria-label')?.endsWith('browser.bin')).click()");
     stage = "wait browser download verification";
