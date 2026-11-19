@@ -45,6 +45,14 @@ def main():
                     return response.headers
             except urllib.error.HTTPError as error:
                 detail = error.read().decode("utf-8", errors="replace")
+                if error.code >= 500:
+                    probe = urllib.request.Request(base + path, method="GET", headers={"Content-Type": "application/offset"})
+                    try:
+                        with urllib.request.urlopen(probe, timeout=5) as response:
+                            detail += f" GET probe returned HTTP {response.status}: {response.read().decode('utf-8', errors='replace')}"
+                    except urllib.error.HTTPError as probe_error:
+                        body = probe_error.read().decode("utf-8", errors="replace")
+                        detail += f" GET probe returned HTTP {probe_error.code}: {body}"
                 raise AssertionError(f"HEAD {path} returned HTTP {error.code}: {detail}") from error
         def completed(name):
             for _ in range(600):
