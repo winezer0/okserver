@@ -102,7 +102,15 @@ export function UploadTasks() {
               )}
               {item.error && (
                 <p className="mt-2 text-xs text-destructive">
-                  {item.errorCode === "destination_changed" ? t("overwriteChanged") : t("error")}
+                  {item.errorCode === "destination_changed"
+                    ? t("overwriteChanged")
+                    : item.errorCode === "destination_exists"
+                      ? t("destinationExists")
+                      : item.errorCode === "insufficient_storage"
+                        ? t("insufficientStorage")
+                        : item.errorCode === "too_many_uploads"
+                          ? t("tooManyUploads")
+                          : item.error || t("error")}
                 </p>
               )}
             </article>
