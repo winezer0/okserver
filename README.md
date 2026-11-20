@@ -114,11 +114,11 @@ Windows PowerShell 使用 `curl.exe` 以避开命令别名。原始流和 multip
 
 ```sh
 okserver cli -c -d @file.zip "http://localhost:28080/upload/dir/file.zip"
-okserver cli -c -parallel 4 -o file.zip "http://localhost:28080/download/dir/file.zip"
-okserver cli -auth "user:password" -ca ca.crt -c -d @file.zip "https://server/upload/file.zip"
+okserver cli -c --parallel 4 -o file.zip "http://localhost:28080/download/dir/file.zip"
+okserver cli --auth "user:password" --ca ca.crt -c -d @file.zip "https://server/upload/file.zip"
 ```
 
-`-parallel` 范围为 1 到 16，默认 4。`-c` 启用下载续传（上传自动恢复）；下载暂存放在目标目录的 `.okserver-downloads` 中，续传状态与目标文件版本绑定。完整摘要校验失败时不会替换现有目标。常用选项还有 `-o`（下载目标）、`-auth`、`-ca`、`-k`（跳过 TLS 证书校验）和 `-t`（超时）。
+`--parallel` 范围为 1 到 16，默认 4。`-c` 启用下载续传（上传自动恢复）；下载暂存放在目标目录的 `.okserver-downloads` 中，续传状态与目标文件版本绑定。完整摘要校验失败时不会替换现有目标。常用选项还有 `-o`（下载目标）、`--auth`、`--ca`、`-k`（跳过 TLS 证书校验）和 `-t`（超时）。
 
 浏览器文件读写 API 需要 HTTPS 或 localhost。支持的浏览器把托管下载暂存到当前站点 OPFS 的 `okserver-downloads-v1`，与用户目标文件隔离；刷新后重新选择目标可校验并复用有效分片。完整 SHA-256 校验通过后才导出。站点存储可能被浏览器回收，因此暂存恢复不保证永久保留。传输中心支持恢复、取消并清理单项任务及批量清理；清理会等待请求和写入结束，并通过 Web Locks 协调多标签页，不删除用户目标文件。原生下载由浏览器管理，页面无法跟踪其完成状态或自动验证结果。
 
@@ -167,7 +167,7 @@ curl --fail-with-body -u 'user:password' \\
 
 创建请求使用 `{ "parent": "相对父目录", "name": "单级目录名" }`；根目录用空字符串作为 `parent`。删除请求使用 `{ "paths": ["相对路径", ...] }`。Web 界面通过 `/api/v1/capabilities` 读取开关状态并隐藏未启用的操作，服务端仍会独立拒绝被禁用的写请求。多选仅作用于当前页；批量下载会下载所选文件并跳过所选目录。
 
-浏览器和 CLI 使用 `Upload-Token` 隔离上传会话，服务端保存凭证摘要。分片默认携带 `X-Chunk-SHA256`，最后一片携带完整摘要。内部状态保存在存储根目录的 `.okserver` 下，不会出现在文件列表或下载路由中。上传任务管理、摘要缓存和存储发布由 JSON 清单、文件锁及原子替换支持；发布后的受管理文件应保持不可变，外部更新应通过替换文件完成。
+浏览器和 CLI 使用 `Upload-Token` 隔离上传会话，服务端保存凭证摘要。分片默认携带 `X-Chunk-SHA256`，最后一片携带完整摘要。上传会话和分片数据存放在 `upload.chunk_dir` 指定的目录；留空时使用程序所在目录的 `.okserver`，相对路径按当前工作目录解析。该目录独立于 `server.path`，删除上传文件不会删除可续传会话。旧版本存放在 `server.path/.okserver/uploads` 的会话不会自动迁移，确认无需续传后可手动清理。上传任务管理、摘要缓存和存储发布由 JSON 清单、文件锁及原子替换支持；发布后的受管理文件应保持不可变，外部更新应通过替换文件完成。
 
 ## 代码结构
 

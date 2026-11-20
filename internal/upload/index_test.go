@@ -86,8 +86,12 @@ func TestChunkDirCanBeIndependentOfUploadRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manager.sessionDir != chunkDir {
-		t.Fatalf("session dir = %q, want %q", manager.sessionDir, chunkDir)
+	wantSessionDir, err := filepath.EvalSymlinks(chunkDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manager.sessionDir != wantSessionDir {
+		t.Fatalf("session dir = %q, want %q", manager.sessionDir, wantSessionDir)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".okserver")); !os.IsNotExist(err) {
 		t.Fatalf("state directory was created inside upload root: %v", err)

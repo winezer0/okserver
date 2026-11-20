@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"flag"
 	"fmt"
 	"os"
 
@@ -29,9 +27,6 @@ func main() {
 		err = client.Run(exe, args[1:])
 	} else {
 		err = server.Run(exe, args)
-	}
-	if errors.Is(err, flag.ErrHelp) {
-		return
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)

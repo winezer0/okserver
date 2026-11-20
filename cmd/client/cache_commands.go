@@ -2,33 +2,61 @@ package client
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/alecthomas/kong"
 	transport "github.com/winezer0/okserver/internal/client"
 )
 
-func runDownloadCache(args []string) error {
-	flags := flag.NewFlagSet("cli cache", flag.ContinueOnError)
-	directory := flags.String("dir", ".", "download destination directory")
-	prune := flags.Bool("prune", false, "remove inactive expired downloads")
-	cancel := flags.String("cancel", "", "cancel one inactive download by ID")
-	age := flags.Duration("older-than", 7*24*time.Hour, "minimum inactive age for pruning")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	cache := filepath.Join(*directory, ".okserver-downloads")
-	if *age < 0 {
+type cacheOptions struct {
+	Directory string        `name:"dir" default:"." help:"download destination directory"`
+	Prune     bool          `help:"remove inactive expired downloads"`
+	Cancel    string        `help:"cancel one inactive download by ID"`
+	Age       time.Duration `name:"older-than" default:"168h" help:"minimum inactive age for pruning"`
+}
+
+func (o *cacheOptions) Validate() error {
+	if o.Age < 0 {
 		return fmt.Errorf("older-than must be non-negative")
 	}
-	if *cancel != "" {
-		return transport.CancelCachedDownload(cache, *cancel)
+	if o.Prune && o.Cancel != "" {
+		return fmt.Errorf("--prune and --cancel cannot be used together")
 	}
-	if *prune {
-		return transport.PruneDownloadCache(cache, *age)
+	return nil
+}
+
+func runDownloadCache(exe string, args []string) error {
+	options := cacheOptions{}
+	showHelp := false
+	parser, err := kong.New(&options,
+		kong.Name(exe+" cli cache"),
+		kong.Description("Inspect and clean cached downloads."),
+		kong.Exit(func(int) { showHelp = true }),
+		kong.Writers(os.Stdout, os.Stderr),
+	)
+	if err != nil {
+		return err
+	}
+	parsed, err := parser.Parse(args)
+	if err != nil {
+		if showHelp {
+			return nil
+		}
+		printParseUsage(err, parsed)
+		return err
+	}
+	if showHelp {
+		return nil
+	}
+	cache := filepath.Join(options.Directory, ".okserver-downloads")
+	if options.Cancel != "" {
+		return transport.CancelCachedDownload(cache, options.Cancel)
+	}
+	if options.Prune {
+		return transport.PruneDownloadCache(cache, options.Age)
 	}
 	tasks, err := transport.ListDownloadCache(cache)
 	if err != nil {

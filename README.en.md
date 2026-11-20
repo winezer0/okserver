@@ -114,11 +114,11 @@ Overwriting existing files is denied by default. To overwrite, provide both `?ov
 
 ```sh
 okserver cli -c -d @file.zip "http://localhost:28080/upload/dir/file.zip"
-okserver cli -c -parallel 4 -o file.zip "http://localhost:28080/download/dir/file.zip"
-okserver cli -auth "user:password" -ca ca.crt -c -d @file.zip "https://server/upload/file.zip"
+okserver cli -c --parallel 4 -o file.zip "http://localhost:28080/download/dir/file.zip"
+okserver cli --auth "user:password" --ca ca.crt -c -d @file.zip "https://server/upload/file.zip"
 ```
 
-`-parallel` accepts 1 through 16 and defaults to 4. `-c` enables download resume (uploads resume automatically). Downloads are staged in `.okserver-downloads` inside the target directory, with resume state bound to the target version. A failed full-file digest check never replaces an existing target. Other common options are `-o` (download target), `-auth`, `-ca`, `-k` (skip TLS certificate verification), and `-t` (timeout).
+`--parallel` accepts 1 through 16 and defaults to 4. `-c` enables download resume (uploads resume automatically). Downloads are staged in `.okserver-downloads` inside the target directory, with resume state bound to the target version. A failed full-file digest check never replaces an existing target. Other common options are `-o` (download target), `--auth`, `--ca`, `-k` (skip TLS certificate verification), and `-t` (timeout).
 
 Browser file read/write APIs require HTTPS or localhost. Supported browsers stage managed downloads in the current origin's OPFS directory `okserver-downloads-v1`, separate from the user-selected target. After refresh, selecting the target again allows valid chunks to be checked and reused. Export happens only after full SHA-256 verification. Browsers may evict site storage, so staged data is not guaranteed to persist indefinitely. The transfer center can resume, cancel and clean individual tasks, or clean them in batches. Cleanup waits for requests and writes and uses Web Locks to coordinate tabs; it does not delete user target files. Native downloads are managed by the browser; the page cannot track completion or verify their contents automatically.
 
@@ -167,7 +167,7 @@ curl --fail-with-body -u 'user:password' \\
 
 Create requests use `{ "parent": "relative parent directory", "name": "single-level directory name" }`; use an empty `parent` for the storage root. Delete requests use `{ "paths": ["relative/path", ...] }`. The web UI reads the switches through `/api/v1/capabilities` and hides disabled actions; the server independently rejects disabled writes. Multi-selection is limited to the current page. Batch download downloads selected files and skips selected directories.
 
-The browser and CLI use `Upload-Token` to isolate upload sessions; the server stores credential digests. Chunks include `X-Chunk-SHA256` by default, and the final chunk includes the full-file digest. Internal state lives under `.okserver` in the storage root and is excluded from listings and download routes. Upload management, digest caching, and storage publication use JSON manifests, file locks, and atomic replacement. Managed files should remain immutable after publication; external updates should replace the file.
+The browser and CLI use `Upload-Token` to isolate upload sessions; the server stores credential digests. Chunks include `X-Chunk-SHA256` by default, and the final chunk includes the full-file digest. Upload sessions and chunk data live in the directory configured by `upload.chunk_dir`; when empty, this defaults to `.okserver` beside the executable. Relative paths are resolved from the current working directory. This directory is independent of `server.path`, so deleting published files does not remove resumable sessions. Sessions from older versions under `server.path/.okserver/uploads` are not migrated automatically and can be removed manually after confirming they are no longer needed. Upload management, digest caching, and storage publication use JSON manifests, file locks, and atomic replacement. Managed files should remain immutable after publication; external updates should replace the file.
 
 ## Code map
 

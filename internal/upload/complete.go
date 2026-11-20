@@ -207,10 +207,6 @@ func (m *Manager) finalizeCompleted(s *session, verify bool) (Metadata, error) {
 		if err != nil {
 			return s.metadata, err
 		}
-		digest.RememberPublishedDigest(partPath, target)
-		if s.metadata.Hashes != nil {
-			digest.RememberVerifiedFile(target, s.metadata.Size, *s.metadata.Hashes)
-		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return s.metadata, err
 	} else if s.metadata.Hashes == nil {
@@ -229,15 +225,29 @@ func (m *Manager) finalizeCompleted(s *session, verify bool) (Metadata, error) {
 	if err = s.metadata.finish(time.Now()); err != nil {
 		return s.metadata, err
 	}
-	if published, e := os.Open(target); e == nil {
-		s.metadata.PublishedFingerprint, _, _ = digest.Fingerprint(published)
-		published.Close()
-	}
 	if err = m.persist(s); err != nil {
 		s.metadata = previous
 		return s.metadata, err
 	}
 	s.done = true
+	// Completion is durable before best-effort fingerprint and digest-cache work.
+	// On Windows, filesystem scanners can delay metadata reads after publication;
+	// that must not leave an already-published upload stuck in Finalizing.
+	if published, e := os.Open(target); e == nil {
+		fingerprint, _, fingerprintErr := digest.Fingerprint(published)
+		_ = published.Close()
+		if fingerprintErr == nil && fingerprint != "" {
+			previousFingerprint := s.metadata.PublishedFingerprint
+			s.metadata.PublishedFingerprint = fingerprint
+			if persistErr := m.persist(s); persistErr != nil {
+				s.metadata.PublishedFingerprint = previousFingerprint
+			}
+		}
+	}
+	digest.RememberPublishedDigest(partPath, target)
+	if s.metadata.Hashes != nil {
+		digest.RememberVerifiedFile(target, s.metadata.Size, *s.metadata.Hashes)
+	}
 	return s.metadata, nil
 }
 

@@ -60,7 +60,7 @@ test("development launcher proxies API, supports browser recovery and stops both
     const html = await (await fetch(url)).text();
     assert.match(html, /@vite\/client/);
     assert.equal((await fetch(url + "/api/v1/files")).status, 200);
-    const browserEnv = { ...process.env, OKSERVER_BROWSER_URL: url, OKSERVER_BROWSER_ROOT: root, OKSERVER_BROWSER_HMR: "1" };
+    const browserEnv = { ...process.env, OKSERVER_BROWSER_URL: url, OKSERVER_BROWSER_ROOT: root, OKSERVER_BROWSER_STATE_ROOT: path.join(project, "bin", ".okserver"), OKSERVER_BROWSER_HMR: "1" };
     delete browserEnv.NODE_TEST_CONTEXT;
     const browserOutput = await run(process.execPath, ["--test", path.join(project, "tests/browser.test.cjs")], { cwd: project, env: browserEnv });
     assert.match(browserOutput, /Browser verified/);

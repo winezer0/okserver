@@ -31,6 +31,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	}
 	binary := buildTestBinary(t)
 	root := t.TempDir()
+	chunkDir := filepath.Join(filepath.Dir(binary), ".okserver")
 	source := filepath.Join(t.TempDir(), "generated.bin")
 	file, err := os.Create(source)
 	if err != nil {
@@ -50,7 +51,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	checksum := hex.EncodeToString(hash.Sum(nil))
 	size := int64(megabytes) << 20
 	// Persist an acknowledged chunk, then reopen the manager as a crashed server would.
-	manager, err := upload.NewManager(upload.Config{Root: root})
+	manager, err := upload.NewManager(upload.Config{Root: root, ChunkDir: chunkDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	if _, err = manager.WriteChunk(session.ID, 0, int64(len(block))-1, size, hex.EncodeToString(chunkHash[:]), bytes.NewReader(block)); err != nil {
 		t.Fatal(err)
 	}
-	manager, err = upload.NewManager(upload.Config{Root: root})
+	manager, err = upload.NewManager(upload.Config{Root: root, ChunkDir: chunkDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	defer proxy.Close()
 	destination := filepath.Join(t.TempDir(), "download.bin")
 	os.WriteFile(destination, []byte("original"), 0600)
-	failed := exec.Command(binary, "cli", "-parallel", "1", "-c", "-o", destination, proxy.URL+"/file")
+	failed := exec.Command(binary, "cli", "--parallel", "1", "-c", "-o", destination, proxy.URL+"/file")
 	if err = failed.Run(); err == nil {
 		t.Fatal("truncated response accepted")
 	}
@@ -151,7 +152,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 		t.Fatal("failed download replaced original")
 	}
 	dropResponses.Store(false)
-	runCLI(t, binary, "-parallel", "1", "-c", "-o", destination, proxy.URL+"/file")
+	runCLI(t, binary, "--parallel", "1", "-c", "-o", destination, proxy.URL+"/file")
 	downloaded, _ := os.Open(destination)
 	defer downloaded.Close()
 	actual := sha256.New()

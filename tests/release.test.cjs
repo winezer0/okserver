@@ -12,13 +12,13 @@ test("standalone embedded binary, version, authentication and invalid configurat
   let server;
   try {
     const binary = path.join(scratch, process.platform === "win32" ? "okserver.exe" : "okserver");
-    const build = spawnSync("go", ["build", "-trimpath", "-ldflags", "-X github.com/winezer0/okserver/internal/buildinfo.Version=v0.0.0-acceptance", "-o", binary, "./cmd/okserver"], {
+    const build = spawnSync("go", ["build", "-buildvcs=true", "-trimpath", "-ldflags", "-X main.version=v0.0.0-acceptance", "-o", binary, "./cmd/okserver"], {
       cwd: path.resolve(__dirname, ".."), encoding: "utf8", timeout: 120000, windowsHide: true,
     });
     assert.equal(build.status, 0, build.stderr);
     const version = spawnSync(binary, ["--version"], { cwd: scratch, encoding: "utf8", windowsHide: true });
     assert.equal(version.status, 0, version.stderr);
-    assert.match(version.stdout, /okserver v0.0.0-acceptance commit=.+ platform=.+/);
+    assert.match(version.stdout, /^v0\.0\.0-acceptance \(commit .+\)\n$/);
     const generatedDirectory = path.join(scratch, "generated");
     fs.mkdirSync(generatedDirectory);
     const generate = (...args) => spawnSync(binary, ["-g", ...args], { cwd: generatedDirectory, encoding: "utf8", timeout: 5000, windowsHide: true });
@@ -91,12 +91,15 @@ test("standalone embedded binary, version, authentication and invalid configurat
     server.kill();
     await stopped;
     // No server.yaml, no -c and no -p: built-in defaults create ./uploads.
-    server = spawn(binary, ["-s", `127.0.0.1:${port}`], { cwd: scratch, stdio: "ignore", windowsHide: true });
+    let defaultOutput = "";
+    server = spawn(binary, ["-s", `127.0.0.1:${port}`], { cwd: scratch, windowsHide: true });
+    server.stdout.on("data", data => defaultOutput += data);
+    server.stderr.on("data", data => defaultOutput += data);
     ready = false;
     for (let attempt = 0; attempt < 100; attempt++) {
       try { ready = (await fetch(base + "/readyz")).ok; } catch {}
       if (ready) break;
-      if (server.exitCode !== null) throw new Error("default-config server stopped");
+      if (server.exitCode !== null) throw new Error(`default-config server stopped: ${defaultOutput}`);
       await delay(100);
     }
     assert.ok(ready, "default-config server did not become ready");

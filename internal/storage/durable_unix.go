@@ -19,6 +19,9 @@ func SyncDirectory(name string) error {
 // DurableReplace publishes an already synced file, then persists both directory entries.
 func DurableReplace(source, target string) error {
 	if err := os.Rename(source, target); err != nil {
+		if isCrossDeviceLink(err) {
+			return replaceCopiedFile(source, target)
+		}
 		return err
 	}
 	if err := SyncDirectory(filepath.Dir(target)); err != nil {

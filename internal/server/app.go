@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,14 +11,23 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/winezer0/okserver/internal/buildinfo"
 	"github.com/winezer0/okserver/internal/hashmanifest"
 	"github.com/winezer0/okserver/internal/observability"
 	"github.com/winezer0/okserver/internal/upload"
 )
+
+type serverCLIOptions struct {
+	Config   string `short:"c" default:"server.yaml" help:"config file"`
+	Generate bool   `short:"g" help:"generate default configuration and exit (never overwrite)"`
+	Path     string `short:"p" help:"path"`
+	Listen   string `short:"s" help:"ip:port"`
+}
 
 func Run(exe string, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -32,38 +40,60 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 
-	fs := flag.NewFlagSet(exe, flag.ContinueOnError)
-	cnf := fs.String("c", "server.yaml", "config file")
-	generate := fs.Bool("g", false, "generate default configuration and exit (never overwrite)")
-	path := fs.String("p", "", "path")
-	listen := fs.String("s", "", "ip:port")
-	err := fs.Parse(args)
+	cli := serverCLIOptions{}
+	showHelp := false
+	parser, err := kong.New(&cli,
+		kong.Name(exe),
+		kong.Description("Start the okserver file server."),
+		kong.Exit(func(int) { showHelp = true }),
+		kong.Writers(os.Stdout, os.Stderr),
+	)
 	if err != nil {
 		return err
 	}
-	if *generate {
-		if err := generateConfig(*cnf); err != nil {
+	parsed, err := parser.Parse(args)
+	if err != nil {
+		if showHelp {
+			return nil
+		}
+		if parsed == nil {
+			var parseErr *kong.ParseError
+			if errors.As(err, &parseErr) {
+				parsed = parseErr.Context
+			}
+		}
+		if parsed != nil {
+			_ = parsed.PrintUsage(false)
+		}
+		return err
+	}
+	if showHelp {
+		return nil
+	}
+	if cli.Generate {
+		if err := generateConfig(cli.Config); err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "Configuration written to %s\n", *cnf)
+		fmt.Fprintf(os.Stderr, "Configuration written to %s\n", cli.Config)
 		return nil
 	}
 
 	explicitConfig := false
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "c" {
+	for _, arg := range args {
+		if arg == "-c" || arg == "--config" || strings.HasPrefix(arg, "--config=") || strings.HasPrefix(arg, "-c=") || (strings.HasPrefix(arg, "-c") && len(arg) > 2) {
 			explicitConfig = true
+			break
 		}
-	})
-	config, err := loadConfig(*cnf, explicitConfig)
+	}
+	config, err := loadConfig(cli.Config, explicitConfig)
 	if err != nil {
 		return err
 	}
-	if *path != "" {
-		config.Server.Path = *path
+	if cli.Path != "" {
+		config.Server.Path = cli.Path
 	}
-	if *listen != "" {
-		config.Server.Listen = *listen
+	if cli.Listen != "" {
+		config.Server.Listen = cli.Listen
 	}
 
 	headerTimeout, _ := durationSetting("server.read_header_timeout", config.Server.ReadHeaderTimeout, 10*time.Second)
@@ -167,7 +197,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		"domain":  config.Server.Certificate.Domain,
 		"example": "example.txt",
 		"dir":     config.Server.Path,
-		"config":  *cnf,
+		"config":  cli.Config,
 		"cert":    config.Server.Certificate.Cert,
 		"key":     config.Server.Certificate.Key,
 		"ca":      config.Server.Certificate.Ca,

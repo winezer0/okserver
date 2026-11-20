@@ -23,6 +23,9 @@ func DurableReplace(source, target string) error {
 		if moveErr == nil {
 			return nil
 		}
+		if isCrossDeviceLink(moveErr) {
+			return replaceCopiedFile(source, target)
+		}
 		if !errors.Is(moveErr, windows.ERROR_SHARING_VIOLATION) && !errors.Is(moveErr, windows.ERROR_ACCESS_DENIED) {
 			return moveErr
 		}

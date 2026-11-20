@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestOpenFileHashesKnownValues(t *testing.T) {
@@ -54,6 +55,9 @@ func TestFingerprintDetectsSameSizeSameTimeModification(t *testing.T) {
 	if err != nil || !reliable {
 		t.Fatalf("initial fingerprint = %q, reliable=%v, err=%v", first, reliable, err)
 	}
+	// Windows ChangeTime can have coarse clock resolution, so ensure the
+	// subsequent write cannot share the initial file timestamp interval.
+	time.Sleep(100 * time.Millisecond)
 	if err = os.WriteFile(name, []byte("new"), 0600); err != nil {
 		t.Fatal(err)
 	}

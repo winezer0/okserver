@@ -20,6 +20,7 @@ func (fs *fileServer) startVerification(ctx context.Context, concurrency int) fu
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
+			failures := make(map[string]int)
 			for {
 				select {
 				case <-ctx.Done():
@@ -36,6 +37,19 @@ func (fs *fileServer) startVerification(ctx context.Context, concurrency int) fu
 					cancel()
 					fs.verificationCancel.Delete(task.ID)
 					fs.verificationPending.Delete(task.ID)
+					if err != nil && !errors.Is(err, context.Canceled) {
+						failures[task.ID]++
+						if fs.logger != nil {
+							fs.logger.ErrorContext(ctx, "upload.verification_failed", "task_id", task.ID, "path", state.Path, "attempt", failures[task.ID], "error", err.Error())
+						}
+						if failures[task.ID] >= 5 {
+							if failErr := fs.uploads.Fail(task.ID); failErr == nil {
+								delete(failures, task.ID)
+							}
+						}
+					} else {
+						delete(failures, task.ID)
+					}
 					if errors.Is(err, upload.ErrConflict) || errors.Is(err, upload.ErrPrecondition) || errors.Is(err, upload.ErrIncomplete) {
 						_ = fs.uploads.Fail(task.ID)
 					}

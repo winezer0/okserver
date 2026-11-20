@@ -56,7 +56,7 @@ test("large CLI upload and parallel verified download use bounded buffers", { ti
     };
     const uploadSeconds = await run(["-c", "-d", "@" + input, base + "/upload/large.bin"]);
     const download = path.join(scratch, "download.bin");
-    const downloadSeconds = await run(["-c", "-parallel", "4", "-o", download, base + "/download/large.bin"]);
+    const downloadSeconds = await run(["-c", "--parallel", "4", "-o", download, base + "/download/large.bin"]);
     const result = crypto.createHash("sha256");
     for await (const chunk of fs.createReadStream(download)) result.update(chunk);
     assert.equal(result.digest("hex"), expected);

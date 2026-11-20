@@ -14,9 +14,9 @@ server:
     {{.exec}} -c "{{.config}}" -s {{.listen}} -p "{{.dir}}"
 
 cli download (SHA-256 verified, parallel ranges):
-    {{.exec}} cli -c -parallel 4{{if .auth}} -auth "{{.auth}}"{{end}}{{if or .cert .key}} -ca "{{.ca}}"{{end}} -o "{{.example}}" "{{.addr}}/download/{{.example}}"
+    {{.exec}} cli -c --parallel 4{{if .auth}} --auth "{{.auth}}"{{end}}{{if or .cert .key}} --ca "{{.ca}}"{{end}} -o "{{.example}}" "{{.addr}}/download/{{.example}}"
 cli upload (serial chunks, resume with -c):
-    {{.exec}} cli -c{{if .auth}} -auth "{{.auth}}"{{end}}{{if or .cert .key}} -ca "{{.ca}}"{{end}} -d "@{{.example}}" "{{.addr}}/upload/{{.example}}"
+    {{.exec}} cli -c{{if .auth}} --auth "{{.auth}}"{{end}}{{if or .cert .key}} --ca "{{.ca}}"{{end}} -d "@{{.example}}" "{{.addr}}/upload/{{.example}}"
 curl POST upload (client SHA-256 optional):
     curl --fail-with-body{{if .auth}} -u "{{.auth}}"{{end}} --data-binary "@{{.example}}" "{{.addr}}/upload/{{.example}}"
     curl --fail-with-body --data-binary "@{{.example}}" "{{.addr}}/upload/{{.example}}?sha256=<hex-sha256>"

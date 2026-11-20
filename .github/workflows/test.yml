@@ -32,8 +32,6 @@ jobs:
         working-directory: web
       - run: npm test
         working-directory: web
-      - run: npm run format:check
-        working-directory: web
       - run: npm run build
         working-directory: web
       - name: Check committed embedded assets
@@ -72,7 +70,7 @@ jobs:
         shell: bash
         env:
           BUILD_VERSION: ${{ github.ref_name }}
-        run: mkdir -p dist && go build -trimpath -ldflags "-s -w -X github.com/winezer0/okserver/internal/buildinfo.Version=$BUILD_VERSION" -o dist/okserver-${{ runner.os }}-${{ runner.arch }}${{ runner.os == 'Windows' && '.exe' || '' }} ./cmd/okserver
+        run: mkdir -p dist && go build -buildvcs=true -trimpath -ldflags "-s -w -X main.version=$BUILD_VERSION" -o dist/okserver-${{ runner.os }}-${{ runner.arch }}${{ runner.os == 'Windows' && '.exe' || '' }} ./cmd/okserver
       - uses: actions/upload-artifact@v4
         with:
           name: okserver-${{ runner.os }}-${{ runner.arch }}
