@@ -46,7 +46,7 @@ func TestDigestCacheInvalidatesSameSizeSameTimeChange(t *testing.T) {
 	}
 }
 func TestFileLockChild(t *testing.T) {
-	name := os.Getenv("UPDOWNFILE_LOCK_CHILD")
+	name := os.Getenv("OKSERVER_LOCK_CHILD")
 	if name == "" {
 		return
 	}
@@ -61,7 +61,7 @@ func TestFileLockChild(t *testing.T) {
 func TestProcessLockReleasedAfterCrash(t *testing.T) {
 	name := filepath.Join(t.TempDir(), "lock")
 	command := exec.Command(os.Args[0], "-test.run=^TestFileLockChild$")
-	command.Env = append(os.Environ(), "UPDOWNFILE_LOCK_CHILD="+name)
+	command.Env = append(os.Environ(), "OKSERVER_LOCK_CHILD="+name)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)

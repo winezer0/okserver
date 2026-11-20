@@ -212,8 +212,8 @@ func TestCreateRejectsInvalidPathAndOversizedFile(t *testing.T) {
 	if _, err = manager.Create(CreateRequest{Path: "../outside.bin", Size: 1}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("path traversal error = %v, want ErrInvalid", err)
 	}
-	for _, invalidPath := range []string{"C:/outside.bin", ".UPDOWNFILE/metadata.json", "file:stream", "CON.txt", "name."} {
-		if _, err = manager.Create(CreateRequest{Path: invalidPath, Size: 1}); !errors.Is(err, ErrInvalid) {
+	for _, invalidPath := range []string{"C:/outside.bin", ".okserver/metadata.json", ".okserver-downloads/file.zip", "file:stream", "CON.txt", "name."} {
+		if _, err = manager.Create(CreateRequest{Path: invalidPath, Size: 1, ChecksumAlgorithm: digest.AlgorithmSHA256}); !errors.Is(err, ErrInvalid) {
 			t.Errorf("invalid path %q error = %v, want ErrInvalid", invalidPath, err)
 		}
 	}
