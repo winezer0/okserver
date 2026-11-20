@@ -5,7 +5,6 @@ server:
   path: "./uploads"
   auth: ""
   param: ""
-  deny: false
   disable_front_ui: false
   allow_create_dir: false
   allow_delete_file: false
@@ -17,6 +16,8 @@ server:
     ca: ""
 
 upload:
+  # Empty uses .okserver beside the executable. Relative paths use the current working directory.
+  chunk_dir: ""
   idle_timeout: 2m
   session_ttl: 24h
   terminal_ttl: 168h
@@ -37,8 +38,8 @@ download:
 log:
   console:
     # text, json, off, or a TLCM mask (for example TLCM or CM).
-    format: text
-    level: info
+    format: json
+    level: error
   file:
     # Empty path disables file output; set a path to enable it.
     path: ""

@@ -10,6 +10,9 @@ import (
 )
 
 func (fs *fileServer) resolvePath(value string, allowRoot bool) (string, string, error) {
+	if err := os.MkdirAll(fs.path, 0o755); err != nil {
+		return "", "", err
+	}
 	value = strings.ReplaceAll(value, "\\", "/")
 	if value == "" && allowRoot {
 		return "", fs.path, nil

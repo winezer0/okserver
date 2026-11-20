@@ -137,6 +137,10 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 	if err != nil {
 		return err
 	}
+	chunkDir := config.Upload.ChunkDir
+	if chunkDir == "" {
+		chunkDir = filepath.Join(filepath.Dir(exe), ".okserver")
+	}
 
 	uploads, err := upload.NewManager(upload.Config{
 		MaxSessions:     config.Upload.MaxSessions,
@@ -144,6 +148,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		MaxPendingBytes: config.Upload.MaxPendingBytes,
 		MinFreeBytes:    config.Upload.MinFreeDiskBytes,
 		Root:            config.Server.Path,
+		ChunkDir:        chunkDir,
 		Observe:         observability.UploadObserver(logger),
 		ChunkSize:       config.Upload.ChunkSize,
 		MaxFileSize:     config.Upload.MaxFileSize,
@@ -178,7 +183,6 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		path:              config.Server.Path,
 		auth:              config.Server.Auth,
 		param:             config.Server.Param,
-		deny:              config.Server.Deny,
 		disableFrontUI:    config.Server.DisableFrontUI,
 		allowCreateDir:    config.Server.AllowCreateDir,
 		allowDeleteFile:   config.Server.AllowDeleteFile,

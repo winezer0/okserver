@@ -43,6 +43,12 @@ func (m *Manager) FindPath(path string) (Metadata, error) {
 		}
 		file, err := os.Open(target)
 		if err != nil {
+			if os.IsNotExist(err) {
+				// The published file may have been deleted independently of its
+				// durable session metadata. Treat the old session as absent so a
+				// client can upload the destination again.
+				return Metadata{}, ErrNotFound
+			}
 			return newest, ErrConflict
 		}
 		value, reliable, err := digest.Fingerprint(file)

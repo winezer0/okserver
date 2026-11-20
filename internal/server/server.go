@@ -23,7 +23,6 @@ type fileServer struct {
 	path                string
 	auth                string
 	param               string
-	deny                bool
 	disableFrontUI      bool
 	allowCreateDir      bool
 	allowDeleteFile     bool

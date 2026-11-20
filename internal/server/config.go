@@ -27,7 +27,6 @@ type httpConfig struct {
 	Path              string            `yaml:"path"`
 	Auth              string            `yaml:"auth"`
 	Param             string            `yaml:"param"`
-	Deny              bool              `yaml:"deny"`
 	DisableFrontUI    bool              `yaml:"disable_front_ui"`
 	AllowCreateDir    bool              `yaml:"allow_create_dir"`
 	AllowDeleteFile   bool              `yaml:"allow_delete_file"`
@@ -36,6 +35,7 @@ type httpConfig struct {
 }
 
 type uploadConfig struct {
+	ChunkDir         string `yaml:"chunk_dir"`
 	IdleTimeout      string `yaml:"idle_timeout"`
 	SessionTTL       string `yaml:"session_ttl"`
 	TerminalTTL      string `yaml:"terminal_ttl"`

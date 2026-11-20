@@ -1,6 +1,7 @@
 package upload
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,6 +46,51 @@ func TestIndexDiscoversOtherManagerAndRebuilds(t *testing.T) {
 	}
 	if found, err := rebuilt.FindPath("file"); err != nil || found.ID != replacement.ID {
 		t.Fatal(found, err)
+	}
+}
+
+func TestDeletedPublishedFileCanBeUploadedAgain(t *testing.T) {
+	root := t.TempDir()
+	manager, err := NewManager(Config{Root: root, ChunkSize: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte("test")
+	first, err := manager.Create(CreateRequest{Path: "file", Size: int64(len(payload)), ChecksumAlgorithm: "sha256"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = manager.WriteChunk(first.ID, 0, int64(len(payload)-1), int64(len(payload)), hashString(payload), bytes.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = manager.Complete(first.ID, hashString(payload)); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Remove(filepath.Join(root, "file")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = manager.FindPath("file"); err != ErrNotFound {
+		t.Fatalf("FindPath after deleting published file = %v, want ErrNotFound", err)
+	}
+	second, err := manager.Create(CreateRequest{Path: "file", Size: int64(len(payload)), ChecksumAlgorithm: "sha256"})
+	if err != nil || second.ID == first.ID {
+		t.Fatalf("reupload session = %+v, %v", second, err)
+	}
+}
+
+func TestChunkDirCanBeIndependentOfUploadRoot(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "files")
+	chunkDir := filepath.Join(base, "state")
+	manager, err := NewManager(Config{Root: root, ChunkDir: chunkDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manager.sessionDir != chunkDir {
+		t.Fatalf("session dir = %q, want %q", manager.sessionDir, chunkDir)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".okserver")); !os.IsNotExist(err) {
+		t.Fatalf("state directory was created inside upload root: %v", err)
 	}
 }
 

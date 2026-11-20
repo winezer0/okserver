@@ -26,9 +26,8 @@ func (fs *fileServer) authenticate(w http.ResponseWriter, r *http.Request) bool 
 		if ok && key != "" && value != "" && len(values) == 1 && secretEqual(values[0], value) {
 			return true
 		}
-	} else {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Please Authenticate"`)
 	}
+	w.Header().Set("WWW-Authenticate", `Basic realm="Please Authenticate"`)
 	writeAPIError(w, http.StatusUnauthorized, "Authenticate Error", nil)
 	return false
 }

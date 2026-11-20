@@ -1,0 +1,93 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (e.g., v1.0.0)
+        required: true
+        type: string
+        default: v0.0.1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: okserver-windows-amd64.zip
+          - os: ubuntu-latest
+            asset: okserver-linux-amd64.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build frontend
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Build and package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          go build -buildvcs=true -mod=readonly -trimpath -ldflags "-s -w -X main.version=$env:RELEASE_VERSION" -o dist/okserver.exe ./cmd/okserver
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path dist/okserver.exe -DestinationPath dist/okserver-windows-amd64.zip -Force
+          Get-FileHash dist/okserver-windows-amd64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  okserver-windows-amd64.zip" } | Set-Content dist/okserver-windows-amd64.zip.sha256
+      - name: Build and package Linux binary
+        if: runner.os == 'Linux'
+        env:
+          RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 go build -buildvcs=true -mod=readonly -trimpath -ldflags "-s -w -X main.version=$RELEASE_VERSION" -o dist/okserver ./cmd/okserver
+          tar -C dist -czf dist/okserver-linux-amd64.tar.gz okserver
+          sha256sum dist/okserver-linux-amd64.tar.gz | awk '{print $1 "  okserver-linux-amd64.tar.gz"}' > dist/okserver-linux-amd64.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Create release if needed and upload builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+        shell: bash
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            release_args=()
+            if [[ "$RELEASE_TAG" == *-* ]]; then release_args+=(--prerelease); fi
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "" "${release_args[@]}"
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber

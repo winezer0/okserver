@@ -3,7 +3,6 @@ package upload
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -62,8 +61,6 @@ func NewManager(config Config) (*Manager, error) {
 	sessionDir := config.ChunkDir
 	if sessionDir == "" {
 		sessionDir = filepath.Join(root, ".okserver", "uploads")
-	} else if !filepath.IsAbs(sessionDir) {
-		sessionDir = filepath.Join(root, sessionDir)
 	}
 	sessionDir, err = filepath.Abs(sessionDir)
 	if err != nil {
@@ -80,11 +77,6 @@ func NewManager(config Config) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	relativeSessionDir, err := filepath.Rel(root, sessionDir)
-	if err != nil || relativeSessionDir == ".." || strings.HasPrefix(relativeSessionDir, ".."+string(os.PathSeparator)) {
-		return nil, ErrInvalid
-	}
-
 	chunkSize := config.ChunkSize
 	if chunkSize <= 0 {
 		chunkSize = DefaultChunkSize

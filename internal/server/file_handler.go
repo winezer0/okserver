@@ -22,11 +22,6 @@ func (fs *fileServer) handleFileList(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-	if fs.deny {
-		writeAPIError(w, http.StatusForbidden, "directory access is disabled", nil)
-		return
-	}
-
 	result, err := filebrowser.ReadPage(fullPath, relative, r.URL.Query())
 	if err != nil {
 		if errors.Is(err, filebrowser.ErrInvalidQuery) {
