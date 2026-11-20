@@ -94,8 +94,16 @@ func TestStateAndCacheDirectoriesAreIndependentOfFilesRoot(t *testing.T) {
 	if manager.sessionDir != wantSessionDir {
 		t.Fatalf("session dir = %q, want %q", manager.sessionDir, wantSessionDir)
 	}
-	if manager.cacheDir != cacheDir || manager.stateDir != stateDir {
-		t.Fatalf("state/cache paths = %q, %q", manager.stateDir, manager.cacheDir)
+	wantStateDir, err := filepath.EvalSymlinks(stateDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCacheDir, err := filepath.EvalSymlinks(cacheDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manager.cacheDir != wantCacheDir || manager.stateDir != wantStateDir {
+		t.Fatalf("state/cache paths = %q, %q; want %q, %q", manager.stateDir, manager.cacheDir, wantStateDir, wantCacheDir)
 	}
 	if _, err := os.Stat(filepath.Join(root, "okserver_states")); !os.IsNotExist(err) {
 		t.Fatalf("state directory was created inside upload root: %v", err)

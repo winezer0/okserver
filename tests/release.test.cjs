@@ -90,7 +90,7 @@ test("standalone embedded binary, version, authentication and invalid configurat
     const stopped = new Promise(resolve => server.once("exit", resolve));
     server.kill();
     await stopped;
-    // No server.yaml, no -c and no -p: built-in defaults create ./uploads.
+    // No server.yaml, no -c and no -p: built-in defaults create ./files.
     let defaultOutput = "";
     server = spawn(binary, ["-s", `127.0.0.1:${port}`], { cwd: scratch, windowsHide: true });
     server.stdout.on("data", data => defaultOutput += data);
@@ -103,7 +103,7 @@ test("standalone embedded binary, version, authentication and invalid configurat
       await delay(100);
     }
     assert.ok(ready, "default-config server did not become ready");
-    assert.ok(fs.statSync(path.join(scratch, "uploads")).isDirectory());
+    assert.ok(fs.statSync(path.join(scratch, "files")).isDirectory());
     assert.equal((await fetch(base + "/api/v1/files")).status, 200);
   } finally {
     if (server && server.exitCode === null) {

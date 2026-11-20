@@ -169,14 +169,14 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 	uploads, err := upload.NewManager(upload.Config{
 		MaxSessions:     config.Upload.MaxSessions,
 		MaxPerOwner:     config.Upload.MaxPerIdentity,
-		MaxPendingBytes: config.Upload.MaxPendingBytes,
-		MinFreeBytes:    config.Upload.MinFreeDiskBytes,
+		MaxPendingBytes: int64(config.Upload.MaxPendingBytes),
+		MinFreeBytes:    uint64(config.Upload.MinFreeDiskBytes),
 		Root:            config.Server.FilesDir,
 		StateDir:        config.Server.StatesDir,
 		CacheDir:        config.Server.CacheDir,
 		Observe:         observability.UploadObserver(logger),
-		ChunkSize:       config.Upload.ChunkSize,
-		MaxFileSize:     config.Upload.MaxFileSize,
+		ChunkSize:       int64(config.Upload.ChunkSize),
+		MaxFileSize:     int64(config.Upload.MaxFileSize),
 		SessionTTL:      uploadSessionTTL,
 		TerminalTTL:     terminalTTL,
 	})
@@ -204,7 +204,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 
 	srh := &fileServer{
 		allowedOrigins:    config.Server.AllowedOrigins,
-		minFreeBytes:      config.Upload.MinFreeDiskBytes,
+		minFreeBytes:      uint64(config.Upload.MinFreeDiskBytes),
 		path:              config.Server.FilesDir,
 		auth:              config.Server.Auth,
 		param:             config.Server.Param,

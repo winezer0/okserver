@@ -25,15 +25,15 @@ upload:
   session_ttl: 24h
   terminal_ttl: 168h
   verify_workers: 2
-  chunk_size: 8388608
+  chunk_size: 8MiB
   # 0 disables the file size or corresponding resource limit.
   max_file_size: 0
   max_concurrent: 4
   max_per_identity: 32
-  buffer_budget_bytes: 67108864
+  buffer_budget_bytes: 64MiB
   max_sessions: 128
-  max_pending_bytes: 107374182400
-  min_free_disk_bytes: 1073741824
+  max_pending_bytes: 100GiB
+  min_free_disk_bytes: 1GiB
 
 download:
   max_concurrent: 16

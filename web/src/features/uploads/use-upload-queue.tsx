@@ -6,6 +6,7 @@ import { clientID } from "../../lib/utils";
 import { usePreferences } from "../../lib/preferences";
 import type { Progress } from "./transfer";
 import { serialUpload as uploadFile } from "./serial-transfer";
+import { Button } from "../../components/ui/button";
 
 export interface QueueItem extends Progress {
   id: string;
@@ -45,12 +46,25 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   const controller = useRef<AbortController | null>(null);
   const itemControllers = useRef(new Map<string, AbortController>());
   const cancelIDs = useRef(new Set<string>());
+  const confirmQueue = useRef<Array<{ path: string; resolve: (value: boolean) => void }>>([]);
+  const [confirmRequest, setConfirmRequest] = useState<{ path: string; resolve: (value: boolean) => void } | null>(null);
   const client = useQueryClient();
   const { t } = usePreferences();
   const update = (transform: (items: QueueItem[]) => QueueItem[]) => {
     state.current = transform(state.current);
     setItems(state.current);
   };
+  function confirmOverwrite(path: string) {
+    return new Promise<boolean>((resolve) => {
+      const request = { path, resolve };
+      if (!confirmRequest) setConfirmRequest(request);
+      else confirmQueue.current.push(request);
+    });
+  }
+  function finishOverwrite(accepted: boolean) {
+    confirmRequest?.resolve(accepted);
+    setConfirmRequest(confirmQueue.current.shift() ?? null);
+  }
   useEffect(() => () => controller.current?.abort(), []);
   function setConcurrency(value: number) {
     const bounded = Number.isFinite(value) ? Math.max(1, Math.min(4, Math.floor(value))) : 1;
@@ -134,7 +148,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
               );
             },
             itemController.signal,
-            (path) => window.confirm(`${t("overwriteConfirm")}\n\n${path}`),
+            confirmOverwrite,
           );
         } catch (error) {
           const canceled = error instanceof Error && error.name === "AbortError";
@@ -208,6 +222,14 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <dialog open={!!confirmRequest} aria-labelledby="overwrite-title" className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border border-border bg-background p-5 text-foreground shadow-xl backdrop:bg-black/40">
+        <h2 id="overwrite-title" className="mb-4 text-lg font-semibold">{t("overwriteConfirm")}</h2>
+        <p className="mb-5 break-all rounded-md bg-muted p-3 text-sm">{confirmRequest?.path}</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => finishOverwrite(false)}>{t("cancel")}</Button>
+          <Button onClick={() => finishOverwrite(true)}>{t("confirmDelete")}</Button>
+        </div>
+      </dialog>
     </Context.Provider>
   );
 }

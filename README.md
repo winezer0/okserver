@@ -73,16 +73,18 @@ okserver --version
 | `server.allow_create_dir` | `false` | 启用浏览器单级目录创建 |
 | `server.allow_delete_file` | `false` | 启用浏览器文件及目录递归删除 |
 | `server.disable_front_ui` | `false` | 禁止访问浏览器前端页面和静态资源 |
-| `upload.chunk_size` | 8 MiB | 上传分片大小；配置为 0 时使用默认值 |
+| `upload.chunk_size` | `8MiB` | 上传分片大小；配置为 0 时使用默认值 |
 | `upload.max_concurrent` | 4 | 全局上传并发 |
 | `upload.max_per_identity` | 32 | 每个身份的活动任务上限 |
-| `upload.buffer_budget_bytes` | 64 MiB | 上传请求预留缓冲总预算 |
-| `upload.max_sessions` / `max_pending_bytes` | 128 / 100 GiB | 任务数和暂存数据上限 |
+| `upload.buffer_budget_bytes` | `64MiB` | 上传请求预留缓冲总预算 |
+| `upload.max_sessions` / `max_pending_bytes` | 128 / `100GiB` | 任务数和暂存数据上限 |
 | `upload.max_file_size` | 0 | 0 表示不额外限制已知长度文件 |
-| `upload.min_free_disk_bytes` | 1 GiB | 最低可用空间 |
+| `upload.min_free_disk_bytes` | `1GiB` | 最低可用空间 |
 | `upload.idle_timeout` / `session_ttl` | 2 分钟 / 24 小时 | 请求空闲与活动会话时限 |
 | `upload.terminal_ttl` / `verify_workers` | 7 天 / 2 | 终态保留时间与校验并发 |
 | `download.max_concurrent` | 16 | 全局下载并发 |
+
+上传容量配置支持 `B`、`KiB`、`MiB`、`GiB`、`TiB`、`PiB`、`EiB` 后缀，按 1024 进制换算；未带单位的整数仍按字节解析，兼容现有配置。
 
 资源限制值为 0 表示关闭相应限制；未知长度和 multipart 上传仍受暂存上限约束。`log.console`、`log.file` 可分别配置格式和级别。TLS 证书配置在 `server.certificate`。反向代理应允许长时间流式请求，关闭上传请求缓冲和 SSE 响应缓冲。
 

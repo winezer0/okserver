@@ -73,16 +73,18 @@ Authentication uses `server.auth: "user:password"` (HTTP Basic) or `server.param
 | `server.allow_create_dir` | `false` | Enable single-level directory creation in the browser |
 | `server.allow_delete_file` | `false` | Enable browser file and recursive directory deletion |
 | `server.disable_front_ui` | `false` | Disable browser pages and frontend assets |
-| `upload.chunk_size` | 8 MiB | Upload chunk size; zero selects the default |
+| `upload.chunk_size` | `8MiB` | Upload chunk size; zero selects the default |
 | `upload.max_concurrent` | 4 | Global upload concurrency |
 | `upload.max_per_identity` | 32 | Active tasks per identity |
-| `upload.buffer_budget_bytes` | 64 MiB | Reserved upload request buffer budget |
-| `upload.max_sessions` / `max_pending_bytes` | 128 / 100 GiB | Session and staged-data limits |
+| `upload.buffer_budget_bytes` | `64MiB` | Reserved upload request buffer budget |
+| `upload.max_sessions` / `max_pending_bytes` | 128 / `100GiB` | Session and staged-data limits |
 | `upload.max_file_size` | 0 | Zero disables the extra limit for known-length files |
-| `upload.min_free_disk_bytes` | 1 GiB | Minimum free disk space |
+| `upload.min_free_disk_bytes` | `1GiB` | Minimum free disk space |
 | `upload.idle_timeout` / `session_ttl` | 2 min / 24 h | Request idle and active session timeouts |
 | `upload.terminal_ttl` / `verify_workers` | 7 days / 2 | Terminal record retention and verification workers |
 | `download.max_concurrent` | 16 | Global download concurrency |
+
+A size setting accepts `B`, `KiB`, `MiB`, `GiB`, `TiB`, `PiB`, or `EiB` suffixes using binary (1024-based) units. Bare integers remain byte counts for compatibility with existing configurations.
 
 A resource limit of zero disables that limit; unknown-length and multipart uploads remain bounded by staging limits. `log.console` and `log.file` have independent formats and levels. TLS certificates are configured under `server.certificate`. Reverse proxies should allow long-lived streaming requests and disable upload request buffering and SSE response buffering.
 

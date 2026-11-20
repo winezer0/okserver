@@ -20,8 +20,20 @@ func TestPrepareDirectoriesResolvesDefaultsFromWorkingDirectory(t *testing.T) {
 			t.Fatalf("directory not prepared at %q: %v", path, err)
 		}
 	}
-	if config.FilesDir != filepath.Join(root, "files") || config.StatesDir != filepath.Join(root, "okserver_states") || config.CacheDir != filepath.Join(root, "okserver_cache") {
-		t.Fatalf("unexpected prepared paths: %+v", config)
+	actualPaths := []string{config.FilesDir, config.StatesDir, config.CacheDir}
+	wantPaths := []string{
+		filepath.Join(root, "files"),
+		filepath.Join(root, "okserver_states"),
+		filepath.Join(root, "okserver_cache"),
+	}
+	for index, wantPath := range wantPaths {
+		resolvedWantPath, err := filepath.EvalSymlinks(wantPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if actualPaths[index] != resolvedWantPath {
+			t.Errorf("prepared path = %q, want %q", actualPaths[index], resolvedWantPath)
+		}
 	}
 }
 

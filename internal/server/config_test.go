@@ -35,11 +35,42 @@ func TestConfigRejectsLegacyAndInvalidSettings(t *testing.T) {
 		"server:\n  listen: a\n  listen: b", "{}\n---\n{}", "server: [",
 		"server:\n  param: sha256:secret", "server:\n  param: directory:secret",
 		"upload:\n  max_per_identity: -1", "upload:\n  buffer_budget_bytes: 1",
+		"upload:\n  chunk_size: 8MB", "upload:\n  buffer_budget_bytes: 1.5MiB",
+		"upload:\n  max_pending_bytes: 9223372036854775807KiB",
+		"upload:\n  min_free_disk_bytes: 18446744073709551615KiB",
 		"upload:\n  verify_workers: -1", "download:\n  max_concurrent: -1",
 	} {
 		t.Run(body, func(t *testing.T) {
 			if _, err := loadConfig(writeConfig(t, body), true); err == nil {
 				t.Fatal("invalid configuration accepted")
+			}
+		})
+	}
+}
+
+func TestConfigAcceptsBinarySizeSuffixesAndLegacyByteValues(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		upload string
+	}{
+		{
+			name:   "binary suffixes",
+			upload: "upload:\n  chunk_size: 8MiB\n  max_file_size: 2GiB\n  buffer_budget_bytes: 64MiB\n  max_pending_bytes: 100GiB\n  min_free_disk_bytes: 1GiB",
+		},
+		{
+			name:   "legacy byte integers",
+			upload: "upload:\n  chunk_size: 8388608\n  max_file_size: 2147483648\n  buffer_budget_bytes: 67108864\n  max_pending_bytes: 107374182400\n  min_free_disk_bytes: 1073741824",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config, err := loadConfig(writeConfig(t, test.upload), true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if config.Upload.ChunkSize != 8<<20 || config.Upload.MaxFileSize != 2<<30 ||
+				config.Upload.BufferBudget != 64<<20 || config.Upload.MaxPendingBytes != 100<<30 ||
+				config.Upload.MinFreeDiskBytes != 1<<30 {
+				t.Fatalf("unexpected parsed upload sizes: %+v", config.Upload)
 			}
 		})
 	}

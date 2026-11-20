@@ -37,18 +37,18 @@ type httpConfig struct {
 }
 
 type uploadConfig struct {
-	IdleTimeout      string `yaml:"idle_timeout"`
-	SessionTTL       string `yaml:"session_ttl"`
-	TerminalTTL      string `yaml:"terminal_ttl"`
-	VerifyWorkers    int    `yaml:"verify_workers"`
-	ChunkSize        int64  `yaml:"chunk_size"`
-	MaxFileSize      int64  `yaml:"max_file_size"`
-	MaxConcurrent    int    `yaml:"max_concurrent"`
-	MaxPerIdentity   int    `yaml:"max_per_identity"`
-	BufferBudget     int64  `yaml:"buffer_budget_bytes"`
-	MaxSessions      int    `yaml:"max_sessions"`
-	MaxPendingBytes  int64  `yaml:"max_pending_bytes"`
-	MinFreeDiskBytes uint64 `yaml:"min_free_disk_bytes"`
+	IdleTimeout      string           `yaml:"idle_timeout"`
+	SessionTTL       string           `yaml:"session_ttl"`
+	TerminalTTL      string           `yaml:"terminal_ttl"`
+	VerifyWorkers    int              `yaml:"verify_workers"`
+	ChunkSize        byteSize         `yaml:"chunk_size"`
+	MaxFileSize      byteSize         `yaml:"max_file_size"`
+	MaxConcurrent    int              `yaml:"max_concurrent"`
+	MaxPerIdentity   int              `yaml:"max_per_identity"`
+	BufferBudget     byteSize         `yaml:"buffer_budget_bytes"`
+	MaxSessions      int              `yaml:"max_sessions"`
+	MaxPendingBytes  byteSize         `yaml:"max_pending_bytes"`
+	MinFreeDiskBytes unsignedByteSize `yaml:"min_free_disk_bytes"`
 }
 
 type serverConfig struct {
@@ -164,10 +164,10 @@ func (c serverConfig) validate() error {
 		name  string
 		value int64
 	}{
-		{"upload.chunk_size", c.Upload.ChunkSize}, {"upload.max_file_size", c.Upload.MaxFileSize},
+		{"upload.chunk_size", int64(c.Upload.ChunkSize)}, {"upload.max_file_size", int64(c.Upload.MaxFileSize)},
 		{"upload.max_concurrent", int64(c.Upload.MaxConcurrent)}, {"upload.max_sessions", int64(c.Upload.MaxSessions)},
-		{"upload.max_pending_bytes", c.Upload.MaxPendingBytes},
-		{"upload.max_per_identity", int64(c.Upload.MaxPerIdentity)}, {"upload.buffer_budget_bytes", c.Upload.BufferBudget},
+		{"upload.max_pending_bytes", int64(c.Upload.MaxPendingBytes)},
+		{"upload.max_per_identity", int64(c.Upload.MaxPerIdentity)}, {"upload.buffer_budget_bytes", int64(c.Upload.BufferBudget)},
 		{"upload.verify_workers", int64(c.Upload.VerifyWorkers)}, {"download.max_concurrent", int64(c.Download.MaxConcurrent)},
 	} {
 		if s.value < 0 {
@@ -178,7 +178,7 @@ func (c serverConfig) validate() error {
 		return errors.New("upload.chunk_size is too large")
 	}
 	if c.Upload.BufferBudget > 0 && c.Upload.BufferBudget < 8<<20 {
-		return errors.New("upload.buffer_budget_bytes must be zero or at least 8388608")
+		return errors.New("upload.buffer_budget_bytes must be zero or at least 8MiB")
 	}
 	for _, s := range []struct{ name, value string }{
 		{"server.read_header_timeout", c.Server.ReadHeaderTimeout},
