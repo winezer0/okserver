@@ -16,7 +16,8 @@ type Config struct {
 	MaxPendingBytes int64
 	MinFreeBytes    uint64
 	Root            string
-	ChunkDir        string
+	StateDir        string
+	CacheDir        string
 	ChunkSize       int64
 	MaxFileSize     int64
 	SessionTTL      time.Duration
@@ -30,7 +31,10 @@ type Manager struct {
 	maxPendingBytes int64
 	minFreeBytes    uint64
 	root            string
+	stateDir        string
+	cacheDir        string
 	sessionDir      string
+	cacheSessionDir string
 	chunkSize       int64
 	maxFileSize     int64
 	mu              sync.RWMutex
@@ -58,23 +62,49 @@ func NewManager(config Config) (*Manager, error) {
 		return nil, err
 	}
 
-	sessionDir := config.ChunkDir
-	if sessionDir == "" {
-		sessionDir = filepath.Join(root, ".okserver", "uploads")
+	stateDir := config.StateDir
+	if stateDir == "" {
+		stateDir = root + ".states"
 	}
-	sessionDir, err = filepath.Abs(sessionDir)
+	stateDir, err = filepath.Abs(stateDir)
 	if err != nil {
 		return nil, err
 	}
-	if err = os.MkdirAll(sessionDir, 0o700); err != nil {
+	if err = os.MkdirAll(stateDir, 0o700); err != nil {
+		return nil, err
+	}
+	cacheDir := config.CacheDir
+	if cacheDir == "" {
+		cacheDir = root + ".cache"
+	}
+	cacheDir, err = filepath.Abs(cacheDir)
+	if err != nil {
+		return nil, err
+	}
+	if err = os.MkdirAll(cacheDir, 0o700); err != nil {
 		return nil, err
 	}
 	root, err = filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, err
 	}
-	sessionDir, err = filepath.EvalSymlinks(sessionDir)
+	stateDir, err = filepath.EvalSymlinks(stateDir)
 	if err != nil {
+		return nil, err
+	}
+	cacheDir, err = filepath.EvalSymlinks(cacheDir)
+	if err != nil {
+		return nil, err
+	}
+	sessionDir := filepath.Join(stateDir, "uploads")
+	cacheSessionDir := filepath.Join(cacheDir, "uploads")
+	if err = os.MkdirAll(sessionDir, 0o700); err != nil {
+		return nil, err
+	}
+	if err = os.MkdirAll(cacheSessionDir, 0o700); err != nil {
+		return nil, err
+	}
+	if err = os.MkdirAll(filepath.Join(stateDir, "locks"), 0o700); err != nil {
 		return nil, err
 	}
 	chunkSize := config.ChunkSize
@@ -93,7 +123,10 @@ func NewManager(config Config) (*Manager, error) {
 		maxPendingBytes: config.MaxPendingBytes,
 		minFreeBytes:    config.MinFreeBytes,
 		root:            root,
+		stateDir:        stateDir,
+		cacheDir:        cacheDir,
 		sessionDir:      sessionDir,
+		cacheSessionDir: cacheSessionDir,
 		chunkSize:       chunkSize,
 		maxFileSize:     config.MaxFileSize,
 		sessions:        make(map[string]*session),
@@ -110,6 +143,22 @@ func NewManager(config Config) (*Manager, error) {
 		return nil, err
 	}
 	return manager, nil
+}
+
+func (m *Manager) StateDir() string {
+	return m.stateDir
+}
+
+func (m *Manager) CacheDir() string {
+	return m.cacheDir
+}
+
+func (m *Manager) payloadPath(id string) string {
+	return filepath.Join(m.cacheSessionDir, id, "payload.part")
+}
+
+func (m *Manager) payloadSessionDir(id string) string {
+	return filepath.Join(m.cacheSessionDir, id)
 }
 
 func (m *Manager) ChunkSize() int64 {

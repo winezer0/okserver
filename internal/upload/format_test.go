@@ -19,7 +19,7 @@ func TestUnversionedSessionsAreNotRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := filepath.Join(root, ".okserver", "uploads", task.ID, "metadata.json")
+	name := filepath.Join(manager.sessionDir, task.ID, "metadata.json")
 	data, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatal(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -26,7 +27,8 @@ func crashServer(t *testing.T, binary, root, address string) (*exec.Cmd, string)
 		listener.Close()
 	}
 	config := filepath.Join(t.TempDir(), "server.yaml")
-	if err := os.WriteFile(config, []byte("{}"), 0600); err != nil {
+	configData := fmt.Sprintf("server:\n  files_dir: %q\n  states_dir: %q\n  cache_dir: %q\n", root, root+".states", root+".cache")
+	if err := os.WriteFile(config, []byte(configData), 0600); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(binary, "-c", config, "-s", address, "-p", root)

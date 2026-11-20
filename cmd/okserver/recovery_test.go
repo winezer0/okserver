@@ -31,7 +31,8 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	}
 	binary := buildTestBinary(t)
 	root := t.TempDir()
-	chunkDir := filepath.Join(filepath.Dir(binary), ".okserver")
+	stateDir := root + ".states"
+	cacheDir := root + ".cache"
 	source := filepath.Join(t.TempDir(), "generated.bin")
 	file, err := os.Create(source)
 	if err != nil {
@@ -51,7 +52,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	checksum := hex.EncodeToString(hash.Sum(nil))
 	size := int64(megabytes) << 20
 	// Persist an acknowledged chunk, then reopen the manager as a crashed server would.
-	manager, err := upload.NewManager(upload.Config{Root: root, ChunkDir: chunkDir})
+	manager, err := upload.NewManager(upload.Config{Root: root, StateDir: stateDir, CacheDir: cacheDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestGeneratedLargeFileRecovery(t *testing.T) {
 	if _, err = manager.WriteChunk(session.ID, 0, int64(len(block))-1, size, hex.EncodeToString(chunkHash[:]), bytes.NewReader(block)); err != nil {
 		t.Fatal(err)
 	}
-	manager, err = upload.NewManager(upload.Config{Root: root, ChunkDir: chunkDir})
+	manager, err = upload.NewManager(upload.Config{Root: root, StateDir: stateDir, CacheDir: cacheDir})
 	if err != nil {
 		t.Fatal(err)
 	}

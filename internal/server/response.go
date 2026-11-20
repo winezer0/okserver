@@ -23,9 +23,11 @@ func (fs *fileServer) writeUploadError(w http.ResponseWriter, err error, metadat
 		observability.RecordTask(w, metadata.ID)
 	}
 	status := http.StatusInternalServerError
+	code := ""
 	switch {
 	case errors.Is(err, upload.ErrPrecondition):
 		status = http.StatusPreconditionFailed
+		code = "destination_changed"
 	case errors.Is(err, diskbudget.ErrBusy):
 		status = http.StatusTooManyRequests
 	case errors.Is(err, upload.ErrBusy):
@@ -59,17 +61,21 @@ func (fs *fileServer) writeUploadError(w http.ResponseWriter, err error, metadat
 	if status == 429 || status == 423 {
 		w.Header().Set("Retry-After", "1")
 	}
-	writeAPIError(w, status, err.Error(), metadata)
+	writeAPIErrorWithCode(w, status, err.Error(), metadata, code)
 }
 
 func writeAPIError(w http.ResponseWriter, status int, message string, metadata *upload.Metadata) {
+	writeAPIErrorWithCode(w, status, message, metadata, "")
+}
+
+func writeAPIErrorWithCode(w http.ResponseWriter, status int, message string, metadata *upload.Metadata, code string) {
 	observability.RecordError(w, errors.New(message))
 	var public *protocol.Upload
 	if metadata != nil {
 		value := publicUpload(*metadata)
 		public = &value
 	}
-	writeJSON(w, status, apiError{Error: message, Upload: public})
+	writeJSON(w, status, apiError{Error: message, Code: code, Upload: public})
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

@@ -2,7 +2,6 @@ package upload
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -24,7 +23,7 @@ func (m *Manager) Cancel(id string) error {
 	if s.metadata.Canceled {
 		return nil
 	}
-	if err := os.Remove(filepath.Join(s.dir, "payload.part")); err != nil && !os.IsNotExist(err) {
+	if err := os.RemoveAll(m.payloadSessionDir(s.metadata.ID)); err != nil {
 		m.emit("upload.cancel_failed", id, s.metadata.Offset, err)
 		return err
 	}

@@ -1,6 +1,7 @@
 package upload
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -53,12 +54,40 @@ func (m *Manager) cleanupOrphans() {
 		if err != nil || time.Since(info.ModTime()) < time.Minute {
 			continue
 		}
-		release, err := storage.TryDestinationLock(m.root, filepath.Join(m.root, "session-"+entry.Name()))
+		release, err := storage.SessionLock(m.stateDir, entry.Name())
 		if err != nil {
 			continue
 		}
 		if _, err = os.Stat(filepath.Join(directory, "metadata.json")); os.IsNotExist(err) {
-			m.emit("cleanup.orphan", entry.Name(), 0, os.RemoveAll(directory))
+			removeErr := os.RemoveAll(directory)
+			removeErr = errors.Join(removeErr, os.RemoveAll(m.payloadSessionDir(entry.Name())))
+			m.emit("cleanup.orphan", entry.Name(), 0, removeErr)
+		}
+		release()
+	}
+	cacheEntries, err := os.ReadDir(m.cacheSessionDir)
+	if err != nil {
+		m.emit("cleanup.upload_failed", "", 0, err)
+		return
+	}
+	for _, entry := range cacheEntries {
+		if !entry.IsDir() || !validID(entry.Name()) {
+			continue
+		}
+		stateDirectory := filepath.Join(m.sessionDir, entry.Name())
+		if _, err := os.Stat(stateDirectory); !os.IsNotExist(err) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || time.Since(info.ModTime()) < time.Minute {
+			continue
+		}
+		release, err := storage.SessionLock(m.stateDir, entry.Name())
+		if err != nil {
+			continue
+		}
+		if _, err = os.Stat(stateDirectory); os.IsNotExist(err) {
+			m.emit("cleanup.orphan", entry.Name(), 0, os.RemoveAll(filepath.Join(m.cacheSessionDir, entry.Name())))
 		}
 		release()
 	}
@@ -101,18 +130,26 @@ func (m *Manager) cleanupExpired() {
 		if !current.s.mu.TryLock() {
 			continue
 		}
-		release, lockErr := m.lockSession(current.s)
+		release, lockErr := storage.SessionLock(m.stateDir, current.id)
 		if lockErr != nil {
 			current.s.mu.Unlock()
 			continue
 		}
+		metadata, readErr := readMetadata(current.s.dir)
+		if readErr != nil {
+			current.s.mu.Unlock()
+			release()
+			continue
+		}
+		current.s.metadata = metadata
+		current.s.done = metadata.Completed
 		updatedAt := current.s.metadata.UpdatedAt
 		ttl := m.sessionTTL
 		if current.s.metadata.Completed || current.s.metadata.Canceled || current.s.metadata.Failed {
 			ttl = m.terminalTTL
 		}
 		if ttl >= 0 && !updatedAt.IsZero() && now.Sub(updatedAt) > ttl {
-			if err := os.RemoveAll(current.s.dir); err != nil {
+			if err := errors.Join(os.RemoveAll(current.s.dir), os.RemoveAll(m.payloadSessionDir(current.id))); err != nil {
 				m.emit("cleanup.upload_failed", current.id, current.s.metadata.Offset, err)
 				current.s.mu.Unlock()
 				release()

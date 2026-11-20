@@ -19,8 +19,8 @@ type Reservation struct {
 	release func()
 }
 
-func gate(root string) (string, func(), error) {
-	directory := filepath.Join(root, ".okserver", "budget")
+func gate(stateDir string) (string, func(), error) {
+	directory := filepath.Join(stateDir, "budget")
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return "", nil, err
 	}
@@ -37,8 +37,8 @@ func add(total *uint64, value uint64) bool {
 	*total += value
 	return true
 }
-func check(root, directory string, bytes, minimum uint64) error {
-	free, err := storage.FreeSpace(root)
+func check(cacheDir, stateDir, directory string, bytes, minimum uint64) error {
+	free, err := storage.FreeSpace(cacheDir)
 	if err != nil {
 		return err
 	}
@@ -47,12 +47,13 @@ func check(root, directory string, bytes, minimum uint64) error {
 		return storage.ErrInsufficientSpace
 	}
 	// Existing destination files and already written prefixes are already reflected in free space.
-	sessions, _ := os.ReadDir(filepath.Join(root, ".okserver", "uploads"))
+	sessionDir := filepath.Join(stateDir, "uploads")
+	sessions, _ := os.ReadDir(sessionDir)
 	for _, session := range sessions {
 		if !session.IsDir() {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, ".okserver", "uploads", session.Name(), "metadata.json"))
+		data, err := os.ReadFile(filepath.Join(sessionDir, session.Name(), "metadata.json"))
 		if err != nil {
 			continue
 		}
@@ -99,24 +100,24 @@ func check(root, directory string, bytes, minimum uint64) error {
 }
 
 // Admit holds the global admission lock until the caller persists the new session.
-func Admit(root string, bytes, minimum uint64) (func(), error) {
-	directory, release, err := gate(root)
+func Admit(cacheDir, stateDir string, bytes, minimum uint64) (func(), error) {
+	directory, release, err := gate(stateDir)
 	if err != nil {
 		return nil, err
 	}
-	if err = check(root, directory, bytes, minimum); err != nil {
+	if err = check(cacheDir, stateDir, directory, bytes, minimum); err != nil {
 		release()
 		return nil, err
 	}
 	return release, nil
 }
-func Reserve(root string, bytes, minimum uint64) (*Reservation, error) {
-	directory, release, err := gate(root)
+func Reserve(cacheDir, stateDir string, bytes, minimum uint64) (*Reservation, error) {
+	directory, release, err := gate(stateDir)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	if err = check(root, directory, bytes, minimum); err != nil {
+	if err = check(cacheDir, stateDir, directory, bytes, minimum); err != nil {
 		return nil, err
 	}
 	var random [16]byte

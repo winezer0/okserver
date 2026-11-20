@@ -2,13 +2,12 @@ package upload
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/winezer0/okserver/internal/storage"
 )
 
 func (m *Manager) lockSession(s *session) (func(), error) {
-	release, err := storage.TryDestinationLock(m.root, filepath.Join(m.root, "session-"+s.metadata.ID))
+	release, err := storage.SessionLock(m.stateDir, s.metadata.ID)
 	if err != nil {
 		return nil, ErrBusy
 	}

@@ -67,7 +67,9 @@ Authentication uses `server.auth: "user:password"` (HTTP Basic) or `server.param
 
 | Setting | Default | Description |
 |---|---:|---|
-| `server.listen` / `server.path` | `:28080` / `./uploads` | Listen address and file root |
+| `server.listen` / `server.files_dir` | `:28080` / `./files` | Listen address and public file root |
+| `server.states_dir` | `./okserver_states` | Upload metadata, locks, disk budgets, and digest manifest |
+| `server.cache_dir` | `./okserver_cache` | Upload chunks and streaming upload scratch data |
 | `server.allow_create_dir` | `false` | Enable single-level directory creation in the browser |
 | `server.allow_delete_file` | `false` | Enable browser file and recursive directory deletion |
 | `server.disable_front_ui` | `false` | Disable browser pages and frontend assets |
@@ -143,7 +145,7 @@ Browser and CLI retry network errors, 408, 423, 429, and 5xx with bounded backof
 | `/api/v1/events` | GET | SSE task snapshot and events |
 | `/healthz`, `/readyz`, `/metrics` | GET / HEAD | Health, readiness, and Prometheus metrics |
 
-Directory management is disabled by default. When enabled, management APIs still require server authentication and constrain relative paths to the `server.path` root. Absolute paths, traversal, and the internal `.okserver` area are rejected. Directory creation creates one level only. Deletion accepts up to 500 paths; directories are deleted recursively and permanently. The full request list is validated before deletion begins, then paths are removed one by one.
+Directory management is disabled by default. When enabled, management APIs still require server authentication and constrain relative paths to the `server.files_dir` root. Absolute paths, traversal, and the internal `.okserver` area are rejected. Directory creation creates one level only. Deletion accepts up to 500 paths; directories are deleted recursively and permanently. The full request list is validated before deletion begins, then paths are removed one by one.
 
 ```yaml
 server:
@@ -167,7 +169,7 @@ curl --fail-with-body -u 'user:password' \\
 
 Create requests use `{ "parent": "relative parent directory", "name": "single-level directory name" }`; use an empty `parent` for the storage root. Delete requests use `{ "paths": ["relative/path", ...] }`. The web UI reads the switches through `/api/v1/capabilities` and hides disabled actions; the server independently rejects disabled writes. Multi-selection is limited to the current page. Batch download downloads selected files and skips selected directories.
 
-The browser and CLI use `Upload-Token` to isolate upload sessions; the server stores credential digests. Chunks include `X-Chunk-SHA256` by default, and the final chunk includes the full-file digest. Upload sessions and chunk data live in the directory configured by `upload.chunk_dir`; when empty, this defaults to `.okserver` beside the executable. Relative paths are resolved from the current working directory. This directory is independent of `server.path`, so deleting published files does not remove resumable sessions. Sessions from older versions under `server.path/.okserver/uploads` are not migrated automatically and can be removed manually after confirming they are no longer needed. Upload management, digest caching, and storage publication use JSON manifests, file locks, and atomic replacement. Managed files should remain immutable after publication; external updates should replace the file.
+The browser and CLI use `Upload-Token` to isolate upload sessions; the server stores credential digests. Chunks include `X-Chunk-SHA256` by default, and the final chunk includes the full-file digest. Session metadata and chunk data live in `server.states_dir` and `server.cache_dir`. Empty values default to `./files`, `./okserver_states`, and `./okserver_cache`, relative to the current working directory. The directories must not overlap. Server downloads stream files directly and create no download scratch files. The old `server.path` and `upload.chunk_dir` settings are no longer supported. To keep published files from an earlier installation, point `server.files_dir` at the existing `uploads` directory. The new state and cache directories can start empty; file digests are rebuilt as needed. Old session state is not migrated, so unfinished uploads cannot resume. Upload management, digest caching, and storage publication use JSON manifests, file locks, and atomic replacement. Managed files should remain immutable after publication; external updates should replace the file.
 
 ## Code map
 

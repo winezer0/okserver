@@ -8,7 +8,6 @@ import (
 	"hash"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"crypto/sha256"
@@ -67,7 +66,7 @@ func (m *Manager) writeChunk(id string, start, end, total int64, expectedChecksu
 		expectedChecksum = checksum
 	}
 
-	part, err := os.OpenFile(filepath.Join(s.dir, "payload.part"), os.O_RDWR, 0o600)
+	part, err := os.OpenFile(m.payloadPath(s.metadata.ID), os.O_RDWR, 0o600)
 	if err != nil {
 		return s.metadata, err
 	}
@@ -102,7 +101,7 @@ func (m *Manager) writeChunk(id string, start, end, total int64, expectedChecksu
 		return s.metadata, errors.Join(cause, restoreErr, truncateErr, syncErr)
 	}
 
-	var writer io.Writer = storage.SpaceWriter{Writer: io.NewOffsetWriter(part, start), Root: m.root, Minimum: m.minFreeBytes}
+	var writer io.Writer = storage.SpaceWriter{Writer: io.NewOffsetWriter(part, start), Root: m.cacheDir, Minimum: m.minFreeBytes}
 	writer = io.MultiWriter(writer, s.whole)
 	var hash hash.Hash
 	if verifyExpected {

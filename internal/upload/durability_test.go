@@ -30,7 +30,7 @@ func TestRecoverFinalizingTransaction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		part, err := os.Open(filepath.Join(session.dir, "payload.part"))
+		part, err := os.Open(manager.payloadPath(session.metadata.ID))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -48,7 +48,7 @@ func TestRecoverFinalizingTransaction(t *testing.T) {
 			t.Fatal(err)
 		}
 		if alreadyRenamed {
-			if err = storage.DurableReplace(filepath.Join(session.dir, "payload.part"), filepath.Join(root, "file")); err != nil {
+			if err = storage.DurableReplace(manager.payloadPath(session.metadata.ID), filepath.Join(root, "file")); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -83,7 +83,7 @@ func TestMetadataFailureDoesNotAcknowledgeChunk(t *testing.T) {
 	if _, err = manager.WriteChunk(metadata.ID, 0, 3, 4, hashString([]byte("test")), bytes.NewBufferString("test")); err == nil {
 		t.Fatal("failed metadata write acknowledged")
 	}
-	info, _ := os.Stat(filepath.Join(session.dir, "payload.part"))
+	info, _ := os.Stat(manager.payloadPath(session.metadata.ID))
 	if info.Size() != 0 || session.metadata.Offset != 0 {
 		t.Fatal("failed chunk not rolled back")
 	}

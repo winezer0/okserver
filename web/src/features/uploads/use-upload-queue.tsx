@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cancelUpload } from "../../lib/api";
+import { APIError } from "../../lib/api";
 import { clientID } from "../../lib/utils";
+import { usePreferences } from "../../lib/preferences";
 import type { Progress } from "./transfer";
 import { serialUpload as uploadFile } from "./serial-transfer";
 
@@ -11,6 +13,7 @@ export interface QueueItem extends Progress {
   directory: string;
   speed: number;
   error?: string;
+  errorCode?: string;
 }
 interface QueueContext {
   items: QueueItem[];
@@ -43,6 +46,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   const itemControllers = useRef(new Map<string, AbortController>());
   const cancelIDs = useRef(new Set<string>());
   const client = useQueryClient();
+  const { t } = usePreferences();
   const update = (transform: (items: QueueItem[]) => QueueItem[]) => {
     state.current = transform(state.current);
     setItems(state.current);
@@ -130,15 +134,18 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
               );
             },
             itemController.signal,
+            (path) => window.confirm(`${t("overwriteConfirm")}\n\n${path}`),
           );
         } catch (error) {
+          const canceled = error instanceof Error && error.name === "AbortError";
           update((current) =>
             current.map((candidate) =>
               candidate.id === item.id
                 ? {
                     ...candidate,
-                    phase: itemController.signal.aborted ? "paused" : "failed",
-                    error: itemController.signal.aborted ? undefined : String(error),
+                    phase: itemController.signal.aborted || canceled ? "paused" : "failed",
+                    error: itemController.signal.aborted || canceled ? undefined : String(error),
+                    errorCode: error instanceof APIError ? error.code : undefined,
                   }
                 : candidate,
             ),

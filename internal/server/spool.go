@@ -25,17 +25,21 @@ func (fs *fileServer) writeSpoolError(w http.ResponseWriter, err error) {
 
 // spool keeps a cross-process ownership lock until the request releases its file.
 func (fs *fileServer) spool(reader io.Reader) (*os.File, int64, func(), error) {
-	file, err := os.CreateTemp(filepath.Join(fs.path, ".okserver"), "stream-*")
+	directory := filepath.Join(fs.uploads.CacheDir(), "streams")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return nil, 0, nil, err
+	}
+	file, err := os.CreateTemp(directory, "stream-*")
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	release, err := storage.TryFileLock(file.Name() + ".lock")
+	release, err := storage.TrySpoolLock(fs.uploads.StateDir(), file.Name())
 	if err != nil {
 		file.Close()
 		os.Remove(file.Name())
 		return nil, 0, nil, err
 	}
-	cleanup := func() { file.Close(); os.Remove(file.Name()); release(); os.Remove(file.Name() + ".lock") }
+	cleanup := func() { file.Close(); release(); os.Remove(file.Name()) }
 	limit := fs.uploads.SpoolLimit()
 	written, err := io.CopyBuffer(spoolWriter{fs: fs, file: file}, io.LimitReader(reader, limit+1), make([]byte, 64*1024))
 	if err == nil && written > limit {
@@ -57,7 +61,7 @@ type spoolWriter struct {
 }
 
 func (writer spoolWriter) Write(data []byte) (int, error) {
-	release, err := diskbudget.Admit(writer.fs.path, uint64(len(data)), writer.fs.minFreeBytes)
+	release, err := diskbudget.Admit(writer.fs.uploads.CacheDir(), writer.fs.uploads.StateDir(), uint64(len(data)), writer.fs.minFreeBytes)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +71,7 @@ func (writer spoolWriter) Write(data []byte) (int, error) {
 
 // Only orphaned, aged scratch files are removed. Live requests retain an OS lock.
 func (fs *fileServer) pruneSpools(now time.Time) {
-	directory := filepath.Join(fs.path, ".okserver")
+	directory := filepath.Join(fs.uploads.CacheDir(), "streams")
 	entries, _ := os.ReadDir(directory)
 	for _, entry := range entries {
 		if entry.IsDir() || strings.HasSuffix(entry.Name(), ".lock") || !(strings.HasPrefix(entry.Name(), "stream-") || strings.HasPrefix(entry.Name(), "multipart-")) {
@@ -78,12 +82,11 @@ func (fs *fileServer) pruneSpools(now time.Time) {
 			continue
 		}
 		name := filepath.Join(directory, entry.Name())
-		release, err := storage.TryFileLock(name + ".lock")
+		release, err := storage.TrySpoolLock(fs.uploads.StateDir(), name)
 		if err != nil {
 			continue
 		}
-		_ = os.Remove(name)
 		release()
-		_ = os.Remove(name + ".lock")
+		_ = os.Remove(name)
 	}
 }

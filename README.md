@@ -67,7 +67,9 @@ okserver --version
 
 | 配置 | 默认值 | 说明 |
 |---|---:|---|
-| `server.listen` / `server.path` | `:28080` / `./uploads` | 监听地址与文件根目录 |
+| `server.listen` / `server.files_dir` | `:28080` / `./files` | 监听地址与对外文件根目录 |
+| `server.states_dir` | `./okserver_states` | 上传会话元数据、锁、磁盘预算和文件摘要清单 |
+| `server.cache_dir` | `./okserver_cache` | 上传分块和流式上传临时数据 |
 | `server.allow_create_dir` | `false` | 启用浏览器单级目录创建 |
 | `server.allow_delete_file` | `false` | 启用浏览器文件及目录递归删除 |
 | `server.disable_front_ui` | `false` | 禁止访问浏览器前端页面和静态资源 |
@@ -143,7 +145,7 @@ okserver cli --auth "user:password" --ca ca.crt -c -d @file.zip "https://server/
 | `/api/v1/events` | GET | SSE 任务快照与事件 |
 | `/healthz`, `/readyz`, `/metrics` | GET / HEAD | 健康、就绪和 Prometheus 指标 |
 
-目录管理默认关闭。启用后，管理 API 仍需要通过服务器认证，并始终将相对路径限制在 `server.path` 根目录内；绝对路径、目录穿越和内部 `.okserver` 路径会被拒绝。目录创建只创建单级目录；删除接口最多接受 500 个路径，目录会递归删除且不可恢复。删除列表先整体校验，随后逐项删除。
+目录管理默认关闭。启用后，管理 API 仍需要通过服务器认证，并始终将相对路径限制在 `server.files_dir` 根目录内；绝对路径、目录穿越和内部 `.okserver` 路径会被拒绝。目录创建只创建单级目录；删除接口最多接受 500 个路径，目录会递归删除且不可恢复。删除列表先整体校验，随后逐项删除。
 
 ```yaml
 server:
@@ -167,7 +169,7 @@ curl --fail-with-body -u 'user:password' \\
 
 创建请求使用 `{ "parent": "相对父目录", "name": "单级目录名" }`；根目录用空字符串作为 `parent`。删除请求使用 `{ "paths": ["相对路径", ...] }`。Web 界面通过 `/api/v1/capabilities` 读取开关状态并隐藏未启用的操作，服务端仍会独立拒绝被禁用的写请求。多选仅作用于当前页；批量下载会下载所选文件并跳过所选目录。
 
-浏览器和 CLI 使用 `Upload-Token` 隔离上传会话，服务端保存凭证摘要。分片默认携带 `X-Chunk-SHA256`，最后一片携带完整摘要。上传会话和分片数据存放在 `upload.chunk_dir` 指定的目录；留空时使用程序所在目录的 `.okserver`，相对路径按当前工作目录解析。该目录独立于 `server.path`，删除上传文件不会删除可续传会话。旧版本存放在 `server.path/.okserver/uploads` 的会话不会自动迁移，确认无需续传后可手动清理。上传任务管理、摘要缓存和存储发布由 JSON 清单、文件锁及原子替换支持；发布后的受管理文件应保持不可变，外部更新应通过替换文件完成。
+浏览器和 CLI 使用 `Upload-Token` 隔离上传会话，服务端保存凭证摘要。分片默认携带 `X-Chunk-SHA256`，最后一片携带完整摘要。会话元数据和分块数据分别保存在 `server.states_dir` 与 `server.cache_dir`。留空时，三个目录默认分别为相对于当前工作目录的 `./files`、`./okserver_states` 和 `./okserver_cache`。目录须互不重叠。服务端下载直接流式读取，不生成下载暂存文件。旧配置 `server.path` 和 `upload.chunk_dir` 不再支持。保留旧版已发布文件时，将 `server.files_dir` 指向原 `uploads` 目录；新状态和缓存目录可为空，文件摘要会按需重建。旧会话状态不迁移，未完成上传不能续传。上传任务管理、摘要缓存和存储发布由 JSON 清单、文件锁及原子替换支持；发布后的受管理文件应保持不可变，外部更新应通过替换文件完成。
 
 ## 代码结构
 

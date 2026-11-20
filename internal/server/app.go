@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -25,7 +24,7 @@ import (
 type serverCLIOptions struct {
 	Config   string `short:"c" default:"server.yaml" help:"config file"`
 	Generate bool   `short:"g" help:"generate default configuration and exit (never overwrite)"`
-	Path     string `short:"p" help:"path"`
+	Path     string `short:"p" help:"files directory"`
 	Listen   string `short:"s" help:"ip:port"`
 }
 
@@ -90,10 +89,13 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		return err
 	}
 	if cli.Path != "" {
-		config.Server.Path = cli.Path
+		config.Server.FilesDir = cli.Path
 	}
 	if cli.Listen != "" {
 		config.Server.Listen = cli.Listen
+	}
+	if err = prepareDirectories(&config.Server); err != nil {
+		return fmt.Errorf("prepare server directories: %w", err)
 	}
 
 	headerTimeout, _ := durationSetting("server.read_header_timeout", config.Server.ReadHeaderTimeout, 10*time.Second)
@@ -162,23 +164,16 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 
 	addrStr := uri.String()
 
-	config.Server.Path, err = filepath.Abs(config.Server.Path)
-	fmt.Fprintf(os.Stderr, "Current Web Root Abs is %v\n", config.Server.Path)
-	if err != nil {
-		return err
-	}
-	chunkDir := config.Upload.ChunkDir
-	if chunkDir == "" {
-		chunkDir = filepath.Join(filepath.Dir(exe), ".okserver")
-	}
+	fmt.Fprintf(os.Stderr, "Current Web Root Abs is %v\n", config.Server.FilesDir)
 
 	uploads, err := upload.NewManager(upload.Config{
 		MaxSessions:     config.Upload.MaxSessions,
 		MaxPerOwner:     config.Upload.MaxPerIdentity,
 		MaxPendingBytes: config.Upload.MaxPendingBytes,
 		MinFreeBytes:    config.Upload.MinFreeDiskBytes,
-		Root:            config.Server.Path,
-		ChunkDir:        chunkDir,
+		Root:            config.Server.FilesDir,
+		StateDir:        config.Server.StatesDir,
+		CacheDir:        config.Server.CacheDir,
 		Observe:         observability.UploadObserver(logger),
 		ChunkSize:       config.Upload.ChunkSize,
 		MaxFileSize:     config.Upload.MaxFileSize,
@@ -196,7 +191,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		"addr":    addrStr,
 		"domain":  config.Server.Certificate.Domain,
 		"example": "example.txt",
-		"dir":     config.Server.Path,
+		"dir":     config.Server.FilesDir,
 		"config":  cli.Config,
 		"cert":    config.Server.Certificate.Cert,
 		"key":     config.Server.Certificate.Key,
@@ -210,7 +205,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 	srh := &fileServer{
 		allowedOrigins:    config.Server.AllowedOrigins,
 		minFreeBytes:      config.Upload.MinFreeDiskBytes,
-		path:              config.Server.Path,
+		path:              config.Server.FilesDir,
 		auth:              config.Server.Auth,
 		param:             config.Server.Param,
 		disableFrontUI:    config.Server.DisableFrontUI,
@@ -218,7 +213,7 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		allowDeleteFile:   config.Server.AllowDeleteFile,
 		logger:            logger,
 		uploads:           uploads,
-		hashes:            hashmanifest.New(config.Server.Path),
+		hashes:            hashmanifest.New(config.Server.StatesDir),
 		uploadIdleTimeout: uploadIdleTimeout,
 	}
 	if config.Upload.MaxConcurrent > 0 {
@@ -247,6 +242,6 @@ func RunContext(parent context.Context, exe string, args []string) (runErr error
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	logger.Info("server.started", "listen", addr.Addr().String(), "root", config.Server.Path, "tls", uri.Scheme == schemeHttps, "build", buildinfo.String())
+	logger.Info("server.started", "listen", addr.Addr().String(), "root", config.Server.FilesDir, "tls", uri.Scheme == schemeHttps, "build", buildinfo.String())
 	return serve(ctx, srv, addr, config.Server.Certificate.Cert, config.Server.Certificate.Key)
 }

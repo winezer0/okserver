@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"crypto/sha256"
@@ -68,7 +67,7 @@ func (m *Manager) CompleteContext(ctx context.Context, id, expectedChecksum stri
 		return s.metadata, ErrIncomplete
 	}
 
-	partPath := filepath.Join(s.dir, "payload.part")
+	partPath := m.payloadPath(s.metadata.ID)
 	part, err := os.Open(partPath)
 	if err != nil {
 		return s.metadata, err
@@ -166,12 +165,12 @@ func (m *Manager) finalizeCompleted(s *session, verify bool) (Metadata, error) {
 	}
 	unlock := storage.LockPath(target)
 	defer unlock()
-	release, lockErr := storage.TryDestinationLock(m.root, target)
+	release, lockErr := storage.TryDestinationLock(m.stateDir, target)
 	if lockErr != nil {
 		return s.metadata, ErrBusy
 	}
 	defer release()
-	partPath := filepath.Join(s.dir, "payload.part")
+	partPath := m.payloadPath(s.metadata.ID)
 	if _, err = os.Stat(partPath); err == nil {
 		if s.metadata.BaseChecksum != "" {
 			current, digestErr := digest.FileDigest(target)

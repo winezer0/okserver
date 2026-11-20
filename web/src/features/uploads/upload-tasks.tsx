@@ -100,7 +100,11 @@ export function UploadTasks() {
                   {Math.ceil((item.file.size - item.offset) / item.speed)} {t("second")}
                 </p>
               )}
-              {item.error && <p className="mt-2 text-xs text-destructive">{t("error")}</p>}
+              {item.error && (
+                <p className="mt-2 text-xs text-destructive">
+                  {item.errorCode === "destination_changed" ? t("overwriteChanged") : t("error")}
+                </p>
+              )}
             </article>
           );
         })}

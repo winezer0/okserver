@@ -82,6 +82,9 @@ func directStatus(w http.ResponseWriter, metadata upload.Metadata) {
 	if metadata.Completed {
 		w.Header().Set("X-File-SHA256", metadata.Checksum)
 	}
+	if metadata.ErrorCode != "" {
+		w.Header().Set("Upload-Error-Code", metadata.ErrorCode)
+	}
 }
 
 func (fs *fileServer) directUpload(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +98,7 @@ func (fs *fileServer) directUpload(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, 400, "invalid destination", nil)
 		return
 	}
-	release, err := storage.TryDestinationLock(fs.path, target+".upload-request")
+	release, err := storage.TryDestinationLock(fs.uploads.StateDir(), target+".upload-request")
 	if err != nil {
 		writeAPIError(w, 409, "another request is writing this destination", nil)
 		return
@@ -243,7 +246,7 @@ func (fs *fileServer) directUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if _, err := os.Stat(target); err == nil && !overwrite {
-		writeAPIError(w, 409, "destination already exists", nil)
+		writeAPIErrorWithCode(w, 409, "destination already exists", nil, "destination_exists")
 		return
 	}
 	if lookupErr == nil && !metadata.Canceled && !metadata.Failed && !(metadata.Completed && overwrite) {

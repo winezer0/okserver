@@ -76,6 +76,8 @@ export const zh = {
   noResults: "没有匹配的文件",
   loading: "正在加载",
   error: "操作失败，请重试",
+  overwriteConfirm: "目标文件已存在，确认覆盖吗？",
+  overwriteChanged: "目标文件已变化。点击重试后重新确认覆盖。",
   requestFailed: "请求失败",
   theme: "切换明暗主题",
   language: "切换语言",

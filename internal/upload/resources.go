@@ -11,7 +11,7 @@ func (m *Manager) checkFreeSpace() error {
 	if m.minFreeBytes == 0 {
 		return nil
 	}
-	free, err := storage.FreeSpace(m.root)
+	free, err := storage.FreeSpace(m.cacheDir)
 	if err != nil {
 		return err
 	}

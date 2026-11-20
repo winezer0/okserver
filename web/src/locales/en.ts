@@ -79,6 +79,8 @@ export const en: Record<Key, string> = {
   noResults: "No matching files",
   loading: "Loading",
   error: "Something went wrong. Please retry.",
+  overwriteConfirm: "This file already exists. Replace it?",
+  overwriteChanged: "The destination changed. Retry and confirm the replacement again.",
   requestFailed: "Request failed",
   theme: "Toggle color theme",
   language: "Change language",

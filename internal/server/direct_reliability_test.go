@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -48,10 +49,16 @@ func TestDirectPostValidationAndNoOverwrite(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				response.Body.Close()
 				if response.StatusCode != 409 {
 					t.Fatal("overwrite allowed")
 				}
+				var apiError struct {
+					Code string `json:"code"`
+				}
+				if err = json.NewDecoder(response.Body).Decode(&apiError); err != nil || apiError.Code != "destination_exists" {
+					t.Fatalf("same-name upload error code = %q, %v", apiError.Code, err)
+				}
+				response.Body.Close()
 			}
 		})
 	}

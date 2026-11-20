@@ -109,7 +109,8 @@ func startTestServer(t *testing.T, binary, root string) string {
 	}
 
 	missingConfig := filepath.Join(t.TempDir(), "server.yaml")
-	if err := os.WriteFile(missingConfig, []byte("{}"), 0600); err != nil {
+	config := fmt.Sprintf("server:\n  files_dir: %q\n  states_dir: %q\n  cache_dir: %q\n", root, root+".states", root+".cache")
+	if err := os.WriteFile(missingConfig, []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(binary, "-c", missingConfig, "-s", address, "-p", root)

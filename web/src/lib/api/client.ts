@@ -6,6 +6,7 @@ export class APIError extends Error {
     public status: number,
     message: string,
     public retryAfterMS = 0,
+    public code?: string,
   ) {
     super(message);
   }
@@ -40,21 +41,25 @@ export function retryAfterMS(response: Response): number {
   const delay = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value) - Date.now();
   return Number.isFinite(delay) ? Math.max(0, delay) : 0;
 }
+const apiErrorSchema = z.object({ error: z.string(), code: z.string().optional() });
+export async function apiErrorFromResponse(response: Response): Promise<APIError> {
+  const body: unknown = await response.clone().json().catch(() => null);
+  const parsed = apiErrorSchema.safeParse(body);
+  return new APIError(
+    response.status,
+    parsed.success ? parsed.data.error : `HTTP ${response.status}`,
+    retryAfterMS(response),
+    parsed.success ? parsed.data.code : undefined,
+  );
+}
 export async function request<T>(
   url: string,
   schema: z.ZodType<T>,
   options: RequestInit = {},
 ): Promise<T> {
   const response = await fetch(apiURL(url), options);
+  if (!response.ok) throw await apiErrorFromResponse(response);
   const body: unknown = response.status === 204 ? {} : await response.json().catch(() => null);
-  if (!response.ok) {
-    const parsed = z.object({ error: z.string() }).safeParse(body);
-    throw new APIError(
-      response.status,
-      parsed.success ? parsed.data.error : `HTTP ${response.status}`,
-      retryAfterMS(response),
-    );
-  }
   return schema.parse(body);
 }
 export const requestUpload = (url: string, options?: RequestInit) =>

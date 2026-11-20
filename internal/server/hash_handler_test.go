@@ -23,7 +23,7 @@ func TestDownloadHashHeadersAndManifest(t *testing.T) {
 	if response.StatusCode != 200 || response.Header.Get("X-File-SHA256") != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" || response.Header.Get("X-File-Size") != "3" {
 		t.Fatal("invalid hash headers")
 	}
-	if _, err = os.Stat(filepath.Join(root, ".okserver", "file-hashes.json")); err != nil {
+	if _, err = os.Stat(filepath.Join(root+".states", "file-hashes.json")); err != nil {
 		t.Fatal("manifest missing", err)
 	}
 }

@@ -31,7 +31,7 @@ func TestConfigRejectsLegacyAndInvalidSettings(t *testing.T) {
 		"server:\n  certificate:\n    cert: file.pem", "log:\n  file:\n    max_size: -1",
 		"log:\n  console:\n    format: jsno", "log:\n  file:\n    level: verbose",
 		"log:\n  console:\n    unknown: true", "log:\n  file:\n    filename: log.txt",
-		"server:\n  listen: ''", "server:\n  path: ''", "upload:\n  chunck_size: 123",
+		"server:\n  listen: ''", "server:\n  path: ''", "upload:\n  chunk_dir: old", "upload:\n  chunck_size: 123",
 		"server:\n  listen: a\n  listen: b", "{}\n---\n{}", "server: [",
 		"server:\n  param: sha256:secret", "server:\n  param: directory:secret",
 		"upload:\n  max_per_identity: -1", "upload:\n  buffer_budget_bytes: 1",
@@ -67,7 +67,7 @@ func TestConfigDefaultsAndReadErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Server.Auth != "user:pass" || config.Server.Path != "./uploads" || config.Upload.MaxConcurrent != 0 || config.Upload.MaxSessions != 0 || config.Upload.MaxPendingBytes != 0 || config.Upload.MinFreeDiskBytes != 0 || config.Upload.ChunkSize != 8<<20 || config.Log.File.MaxAge != 0 || config.Log.File.MaxBackups != 0 {
+	if config.Server.Auth != "user:pass" || config.Server.FilesDir != "./files" || config.Server.StatesDir != "./okserver_states" || config.Server.CacheDir != "./okserver_cache" || config.Upload.MaxConcurrent != 0 || config.Upload.MaxSessions != 0 || config.Upload.MaxPendingBytes != 0 || config.Upload.MinFreeDiskBytes != 0 || config.Upload.ChunkSize != 8<<20 || config.Log.File.MaxAge != 0 || config.Log.File.MaxBackups != 0 {
 		t.Fatalf("partial configuration or explicit zero lost: %+v", config)
 	}
 	if strings.Contains(displayAuth("user:secret"), "secret") {
@@ -81,8 +81,32 @@ func TestExampleConfigLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	defaults := defaultConfig()
-	if config.Server.Listen != defaults.Server.Listen || config.Server.Path != defaults.Server.Path ||
+	if config.Server.Listen != defaults.Server.Listen || config.Server.FilesDir != defaults.Server.FilesDir ||
+		config.Server.StatesDir != defaults.Server.StatesDir || config.Server.CacheDir != defaults.Server.CacheDir ||
 		config.Upload.ChunkSize != defaults.Upload.ChunkSize || config.Download.MaxConcurrent != defaults.Download.MaxConcurrent {
 		t.Fatalf("example config has unexpected server defaults: %+v", config)
+	}
+}
+
+func TestEmptyDirectorySettingsUseDefaults(t *testing.T) {
+	config, err := loadConfig(writeConfig(t, "server:\n  files_dir: ''\n  states_dir: ''\n  cache_dir: ''"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaults := defaultConfig().Server
+	if config.Server.FilesDir != defaults.FilesDir || config.Server.StatesDir != defaults.StatesDir || config.Server.CacheDir != defaults.CacheDir {
+		t.Fatalf("empty directory settings did not use defaults: %+v", config.Server)
+	}
+}
+
+func TestLegacyDirectorySettingsGiveMigrationErrors(t *testing.T) {
+	for _, test := range []struct{ body, message string }{
+		{"server:\n  path: ./uploads", "server.path is no longer supported; use server.files_dir"},
+		{"upload:\n  chunk_dir: ./chunks", "upload.chunk_dir is no longer supported; configure server.states_dir and server.cache_dir"},
+	} {
+		_, err := loadConfig(writeConfig(t, test.body), true)
+		if err == nil || err.Error() != test.message {
+			t.Fatalf("legacy setting %q returned %v", test.body, err)
+		}
 	}
 }

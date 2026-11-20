@@ -24,7 +24,9 @@ type certificateConfig struct {
 type httpConfig struct {
 	AllowedOrigins    []string          `yaml:"allowed_origins,omitempty"`
 	Listen            string            `yaml:"listen"`
-	Path              string            `yaml:"path"`
+	FilesDir          string            `yaml:"files_dir"`
+	StatesDir         string            `yaml:"states_dir"`
+	CacheDir          string            `yaml:"cache_dir"`
 	Auth              string            `yaml:"auth"`
 	Param             string            `yaml:"param"`
 	DisableFrontUI    bool              `yaml:"disable_front_ui"`
@@ -35,7 +37,6 @@ type httpConfig struct {
 }
 
 type uploadConfig struct {
-	ChunkDir         string `yaml:"chunk_dir"`
 	IdleTimeout      string `yaml:"idle_timeout"`
 	SessionTTL       string `yaml:"session_ttl"`
 	TerminalTTL      string `yaml:"terminal_ttl"`
@@ -61,7 +62,10 @@ type serverConfig struct {
 
 func defaultConfig() serverConfig {
 	c := serverConfig{
-		Server: httpConfig{Listen: ":28080", Path: "./uploads", ReadHeaderTimeout: "10s"},
+		Server: httpConfig{
+			Listen: ":28080", FilesDir: "./files", StatesDir: "./okserver_states", CacheDir: "./okserver_cache",
+			ReadHeaderTimeout: "10s",
+		},
 		Upload: uploadConfig{
 			IdleTimeout: "2m", SessionTTL: "24h", TerminalTTL: "168h", VerifyWorkers: 2, ChunkSize: 8 << 20,
 			MaxConcurrent: 4, MaxPerIdentity: 32, BufferBudget: 64 << 20, MaxSessions: 128, MaxPendingBytes: 100 << 30, MinFreeDiskBytes: 1 << 30,
@@ -91,13 +95,33 @@ func loadConfig(name string, explicit bool) (serverConfig, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err = decoder.Decode(&config); err != nil && !errors.Is(err, io.EOF) {
+		if strings.Contains(err.Error(), "field path not found in type server.httpConfig") {
+			return config, errors.New("server.path is no longer supported; use server.files_dir")
+		}
+		if strings.Contains(err.Error(), "field chunk_dir not found in type server.uploadConfig") {
+			return config, errors.New("upload.chunk_dir is no longer supported; configure server.states_dir and server.cache_dir")
+		}
 		return config, fmt.Errorf("decode configuration (expected server, upload, download and log sections): %w", err)
 	}
 	var extra any
 	if err = decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return config, errors.New("configuration must contain one YAML document")
 	}
+	config.applyDirectoryDefaults()
 	return config, config.validate()
+}
+
+func (c *serverConfig) applyDirectoryDefaults() {
+	defaults := defaultConfig().Server
+	if c.Server.FilesDir == "" {
+		c.Server.FilesDir = defaults.FilesDir
+	}
+	if c.Server.StatesDir == "" {
+		c.Server.StatesDir = defaults.StatesDir
+	}
+	if c.Server.CacheDir == "" {
+		c.Server.CacheDir = defaults.CacheDir
+	}
 }
 
 func durationSetting(name, value string, fallback time.Duration) (time.Duration, error) {
@@ -127,8 +151,14 @@ func (c serverConfig) validate() error {
 	if strings.TrimSpace(c.Server.Listen) == "" {
 		return errors.New("server.listen must not be empty")
 	}
-	if strings.TrimSpace(c.Server.Path) == "" {
-		return errors.New("server.path must not be empty")
+	for _, directory := range []struct{ name, value string }{
+		{"server.files_dir", c.Server.FilesDir},
+		{"server.states_dir", c.Server.StatesDir},
+		{"server.cache_dir", c.Server.CacheDir},
+	} {
+		if strings.TrimSpace(directory.value) == "" {
+			return fmt.Errorf("%s must not be empty", directory.name)
+		}
 	}
 	for _, s := range []struct {
 		name  string

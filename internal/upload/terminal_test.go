@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -119,7 +118,7 @@ func TestModifiedStagingInvalidatesIncrementalHash(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			part, err := os.OpenFile(filepath.Join(manager.sessionDir, task.ID, "payload.part"), os.O_WRONLY, 0600)
+			part, err := os.OpenFile(manager.payloadPath(task.ID), os.O_WRONLY, 0600)
 			if err != nil {
 				t.Fatal(err)
 			}

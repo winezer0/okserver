@@ -162,16 +162,28 @@ CLI 按偏移写入临时文件，持久化已确认下载区间和文件版本�
 ## 9. 持久化与安全发布
 
 ```text
-.okserver/
+server.files_dir/
+  对外文件和子目录
+
+server.states_dir/
+  uploads/<任务ID>/
+    metadata.json
+  locks/
+  budget/
+  file-hashes.json
+
+server.cache_dir/
   uploads/<任务ID>/
     payload.part
-    metadata.json
-  file-hashes.json
+  streams/
+    <流式暂存文件>
 ```
 
 元数据保存版本、任务 ID、目标路径、总大小、确认偏移、预期 Hash、状态和更新时间。元数据原子更新；文件与目录同步策略复用现有持久化实现。
 
-启动恢复时核对数据长度与确认偏移，截断未确认尾部；数据短于已确认偏移时报告损坏，禁止谎报进度。发布采用同文件系统原子操作，并保证不覆盖已存在文件；恢复流程处理发布成功但状态更新中断的情况。
+`server.files_dir`、`server.states_dir` 和 `server.cache_dir` 分别保存对外文件、会话状态和上传暂存数据，默认值为 `./files`、`./okserver_states` 和 `./okserver_cache`。三个目录互不重叠；旧 `server.path` 与 `upload.chunk_dir` 配置不再支持。保留已有成品时，将 `server.files_dir` 指向原 `uploads` 目录；旧会话状态不迁移，未完成上传不能续传。
+
+启动恢复时核对缓存数据长度与确认偏移，截断未确认尾部；数据短于已确认偏移时报告损坏，禁止谎报进度。发布采用同文件系统原子操作；默认拒绝同名文件，调用方须显式请求覆盖并提供当前目标的 `If-Match` ETag。ETag 不匹配时拒绝发布；恢复流程处理发布成功但状态更新中断的情况。
 
 任务锁、文件路径锁和全局资源预算统一实现。认证覆盖上传、状态、取消、下载和 Hash 查询；目标路径需防范路径穿越、符号链接越界及 Windows 特殊路径。取消只删除暂存数据，不删除已发布文件。过期任务定期清理，Hash manifest 更新需避免并发丢失。
 

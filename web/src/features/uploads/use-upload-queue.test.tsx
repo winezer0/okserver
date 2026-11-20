@@ -6,9 +6,13 @@ import { UploadQueueProvider, useUploadQueue } from "./use-upload-queue";
 import { serialUpload as uploadFile } from "./serial-transfer";
 import { cancelUpload } from "../../lib/api";
 import { afterEach } from "vitest";
+import { Preferences } from "../../lib/preferences";
 
 vi.mock("./serial-transfer", () => ({ serialUpload: vi.fn() }));
-vi.mock("../../lib/api", () => ({ cancelUpload: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../../lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/api")>()),
+  cancelUpload: vi.fn().mockResolvedValue(undefined),
+}));
 afterEach(() => {
   localStorage.clear();
 });
@@ -29,9 +33,11 @@ it("cancels one active upload, then continues with the queued file", async () =>
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <UploadQueueProvider>{children}</UploadQueueProvider>
-    </QueryClientProvider>
+    <Preferences>
+      <QueryClientProvider client={client}>
+        <UploadQueueProvider>{children}</UploadQueueProvider>
+      </QueryClientProvider>
+    </Preferences>
   );
   const { result } = renderHook(useUploadQueue, { wrapper });
   act(() =>
@@ -70,9 +76,11 @@ it("runs the configured number of transfers concurrently and persists the settin
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <UploadQueueProvider>{children}</UploadQueueProvider>
-    </QueryClientProvider>
+    <Preferences>
+      <QueryClientProvider client={client}>
+        <UploadQueueProvider>{children}</UploadQueueProvider>
+      </QueryClientProvider>
+    </Preferences>
   );
   const { result } = renderHook(useUploadQueue, { wrapper });
   act(() => {

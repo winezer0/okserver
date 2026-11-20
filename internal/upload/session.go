@@ -29,6 +29,7 @@ type Metadata struct {
 	Canceled             bool           `json:"canceled,omitempty"`
 	Failed               bool           `json:"failed,omitempty"`
 	ExpectedSHA256       string         `json:"expected_sha256,omitempty"`
+	ErrorCode            string         `json:"error_code,omitempty"`
 	BaseChecksum         string         `json:"base_checksum,omitempty"`
 	ID                   string         `json:"id"`
 	Path                 string         `json:"path"`

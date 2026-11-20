@@ -28,7 +28,8 @@ func newTestHTTPServerWithChunkSize(t *testing.T, auth string, chunkSize int64) 
 	t.Helper()
 
 	root := t.TempDir()
-	manager, err := upload.NewManager(upload.Config{Root: root, ChunkSize: chunkSize})
+	stateDir, cacheDir := root+".states", root+".cache"
+	manager, err := upload.NewManager(upload.Config{Root: root, StateDir: stateDir, CacheDir: cacheDir, ChunkSize: chunkSize})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func newTestHTTPServerWithChunkSize(t *testing.T, auth string, chunkSize int64) 
 		path:              root,
 		auth:              auth,
 		uploads:           manager,
-		hashes:            hashmanifest.New(root),
+		hashes:            hashmanifest.New(stateDir),
 		uploadIdleTimeout: 2 * time.Minute,
 	}
 	ts := httptest.NewServer(fs)

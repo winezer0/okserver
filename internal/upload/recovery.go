@@ -21,7 +21,7 @@ func (m *Manager) loadSessions() error {
 			continue
 		}
 		dir := filepath.Join(m.sessionDir, entry.Name())
-		release, lockErr := storage.TryDestinationLock(m.root, filepath.Join(m.root, "session-"+entry.Name()))
+		release, lockErr := storage.SessionLock(m.stateDir, entry.Name())
 		if lockErr != nil {
 			continue
 		}
@@ -110,7 +110,12 @@ func (m *Manager) loadSessions() error {
 			release()
 			continue
 		}
-		partPath := filepath.Join(dir, "payload.part")
+		partPath := m.payloadPath(metadata.ID)
+		if err = os.MkdirAll(m.payloadSessionDir(metadata.ID), 0o700); err != nil {
+			m.emit("upload.restore_failed", metadata.ID, metadata.Offset, err)
+			release()
+			continue
+		}
 		part, openErr := os.OpenFile(partPath, os.O_CREATE|os.O_RDWR, 0o666)
 		if openErr != nil {
 			m.emit("upload.restore_failed", metadata.ID, metadata.Offset, openErr)

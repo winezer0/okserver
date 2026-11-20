@@ -26,7 +26,7 @@ func TestRestoreAndCleanupEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	invalidID := strings.Repeat("f", 32)
-	dir := filepath.Join(root, ".okserver", "uploads", invalidID)
+	dir := filepath.Join(manager.sessionDir, invalidID)
 	if err := os.Mkdir(dir, 0700); err != nil {
 		t.Fatal(err)
 	}

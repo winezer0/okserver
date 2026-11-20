@@ -78,22 +78,26 @@ func TestDeletedPublishedFileCanBeUploadedAgain(t *testing.T) {
 	}
 }
 
-func TestChunkDirCanBeIndependentOfUploadRoot(t *testing.T) {
+func TestStateAndCacheDirectoriesAreIndependentOfFilesRoot(t *testing.T) {
 	base := t.TempDir()
 	root := filepath.Join(base, "files")
-	chunkDir := filepath.Join(base, "state")
-	manager, err := NewManager(Config{Root: root, ChunkDir: chunkDir})
+	stateDir := filepath.Join(base, "states")
+	cacheDir := filepath.Join(base, "cache")
+	manager, err := NewManager(Config{Root: root, StateDir: stateDir, CacheDir: cacheDir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantSessionDir, err := filepath.EvalSymlinks(chunkDir)
+	wantSessionDir, err := filepath.EvalSymlinks(filepath.Join(stateDir, "uploads"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if manager.sessionDir != wantSessionDir {
 		t.Fatalf("session dir = %q, want %q", manager.sessionDir, wantSessionDir)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".okserver")); !os.IsNotExist(err) {
+	if manager.cacheDir != cacheDir || manager.stateDir != stateDir {
+		t.Fatalf("state/cache paths = %q, %q", manager.stateDir, manager.cacheDir)
+	}
+	if _, err := os.Stat(filepath.Join(root, "okserver_states")); !os.IsNotExist(err) {
 		t.Fatalf("state directory was created inside upload root: %v", err)
 	}
 }

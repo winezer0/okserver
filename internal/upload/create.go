@@ -34,7 +34,7 @@ func (m *Manager) Create(request CreateRequest) (Metadata, error) {
 	}
 	m.createMu.Lock()
 	defer m.createMu.Unlock()
-	admissionRelease, admissionErr := storage.TryFileLock(filepath.Join(m.sessionDir, "admission.lock"))
+	admissionRelease, admissionErr := storage.TryFileLock(filepath.Join(m.stateDir, "locks", "admission.lock"))
 	if admissionErr != nil {
 		return Metadata{}, ErrBusy
 	}
@@ -94,7 +94,7 @@ func (m *Manager) Create(request CreateRequest) (Metadata, error) {
 	if err := m.checkResources(request.Size, request.Owner); err != nil {
 		return Metadata{}, err
 	}
-	budgetRelease, budgetErr := diskbudget.Admit(m.root, uint64(request.Size), m.minFreeBytes)
+	budgetRelease, budgetErr := diskbudget.Admit(m.cacheDir, m.stateDir, uint64(request.Size), m.minFreeBytes)
 	if budgetErr != nil {
 		return Metadata{}, budgetErr
 	}
@@ -121,17 +121,31 @@ func (m *Manager) Create(request CreateRequest) (Metadata, error) {
 	if err = os.Mkdir(dir, 0o700); err != nil {
 		return Metadata{}, err
 	}
+	payloadDir := m.payloadSessionDir(id)
+	if err = os.Mkdir(payloadDir, 0o700); err != nil {
+		_ = os.RemoveAll(dir)
+		return Metadata{}, err
+	}
 	if err = storage.SyncDirectory(m.sessionDir); err != nil {
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(payloadDir)
+		return Metadata{}, err
+	}
+	if err = storage.SyncDirectory(m.cacheSessionDir); err != nil {
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(payloadDir)
 		return Metadata{}, err
 	}
 
-	part, err := os.OpenFile(filepath.Join(dir, "payload.part"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o666)
+	part, err := os.OpenFile(m.payloadPath(id), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o666)
 	if err != nil {
 		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(payloadDir)
 		return Metadata{}, err
 	}
 	if err = part.Close(); err != nil {
 		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(payloadDir)
 		return Metadata{}, err
 	}
 
@@ -154,6 +168,7 @@ func (m *Manager) Create(request CreateRequest) (Metadata, error) {
 	s := &session{metadata: metadata, dir: dir}
 	if err = m.persist(s); err != nil {
 		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(payloadDir)
 		return Metadata{}, err
 	}
 	m.mu.Lock()

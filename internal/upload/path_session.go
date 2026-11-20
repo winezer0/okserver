@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/winezer0/okserver/internal/digest"
 )
@@ -80,7 +79,7 @@ func (m *Manager) PrefixSHA256Context(ctx context.Context, id string) (string, e
 	if s.metadata.Completed {
 		return s.metadata.Checksum, nil
 	}
-	file, err := os.Open(filepath.Join(s.dir, "payload.part"))
+	file, err := os.Open(m.payloadPath(s.metadata.ID))
 	if err != nil {
 		return "", err
 	}

@@ -10,8 +10,9 @@
 
 ```go
 type Config struct {
-    RootDir  string // 成品文件目录
-    ChunkDir string // 会话元数据和分片目录
+	RootDir  string // 对外文件目录
+	StateDir string // 会话元数据、锁和摘要清单目录
+	CacheDir string // 分块和流式暂存目录
 }
 
 func New(Config) (*Server, error)
@@ -25,8 +26,9 @@ func (s *Server) Close(context.Context) error
 
 ```go
 transfers, err := fileserver.New(fileserver.Config{
-    RootDir:  "/srv/project-a/files",
-    ChunkDir: "/var/lib/myapp/project-a/uploads",
+	RootDir:  "/srv/project-a/files",
+	StateDir: "/var/lib/myapp/project-a/states",
+	CacheDir: "/var/cache/myapp/project-a/uploads",
 })
 if err != nil {
     return err
@@ -35,10 +37,10 @@ mux.Handle("/workspace/", http.StripPrefix("/workspace", transfers))
 ```
 
 - 磁盘上层目录由宿主配置。请求中的文件名始终相对于 `RootDir`。例如 `/workspace/download/reports/a.pdf` 对应 `RootDir/reports/a.pdf`。
-- 嵌入模式要求显式配置两个目录，建议使用绝对路径。会话目录应位于文件根目录之外，每个实例独立使用。目录校验须考虑符号链接以及根目录边界。
+- 嵌入模式要求显式配置三个互不重叠的目录，建议使用绝对路径。状态和缓存目录应位于文件根目录之外，每个实例独立使用。目录校验须考虑符号链接以及根目录边界。
 - 首版一个实例对应一个存储根目录。多个项目分别创建实例并挂载到不同前缀，宿主根据调用方权限决定可访问的实例。
 - 宿主可以在挂载层实现鉴权。若同一实例服务多个用户，需要定义从请求上下文传递稳定用户身份的方式，并由组件用于会话所有者校验。上传令牌用于续传会话校验。
-- 独立版继续按 `upload.chunk_dir` 处理默认路径。旧目录中的会话不自动迁移，确认无需续传后由运营方手动清理。
+- 独立版使用 `server.files_dir`、`server.states_dir` 和 `server.cache_dir` 分离公开文件、会话状态与上传暂存。保留已有成品时，将 `server.files_dir` 指向原文件目录；旧会话状态不迁移。
 
 ## HTTP 接入约定
 

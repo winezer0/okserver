@@ -40,7 +40,13 @@ func TestSpoolLimitAndCleanup(t *testing.T) {
 
 func TestPruneSpoolsPreservesActiveAndFresh(t *testing.T) {
 	root := t.TempDir()
-	directory := filepath.Join(root, ".okserver")
+	manager, err := upload.NewManager(upload.Config{
+		Root: root, StateDir: filepath.Join(root + ".states"), CacheDir: filepath.Join(root + ".cache"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Join(manager.CacheDir(), "streams")
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -56,12 +62,13 @@ func TestPruneSpoolsPreservesActiveAndFresh(t *testing.T) {
 			}
 		}
 	}
-	release, err := storage.TryFileLock(filepath.Join(directory, "stream-active.lock"))
+	activePath := filepath.Join(directory, "stream-active")
+	release, err := storage.TrySpoolLock(manager.StateDir(), activePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	server := &fileServer{path: root}
+	server := &fileServer{path: root, uploads: manager}
 	server.pruneSpools(time.Now())
 	for _, name := range []string{"stream-active", "stream-fresh", "unrelated"} {
 		if _, err := os.Stat(filepath.Join(directory, name)); err != nil {

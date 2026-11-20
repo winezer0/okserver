@@ -86,3 +86,55 @@ func TestProcessLockReleasedAfterCrash(t *testing.T) {
 	}
 	release()
 }
+
+func TestSessionLockWaitsForCollidingShard(t *testing.T) {
+	stateDir := t.TempDir()
+	firstID := "session-first"
+	secondID := ""
+	for candidate := 0; candidate < 1000; candidate++ {
+		id := fmt.Sprintf("session-%d", candidate)
+		if id != firstID && lockShard("session", id) == lockShard("session", firstID) {
+			secondID = id
+			break
+		}
+	}
+	if secondID == "" {
+		t.Fatal("could not find colliding session IDs")
+	}
+
+	release, err := SessionLock(stateDir, firstID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	started := make(chan struct{})
+	acquired := make(chan error, 1)
+	go func() {
+		close(started)
+		releaseSecond, lockErr := SessionLock(stateDir, secondID)
+		if lockErr == nil {
+			releaseSecond()
+		}
+		acquired <- lockErr
+	}()
+	<-started
+	select {
+	case err = <-acquired:
+		t.Fatalf("colliding session lock did not wait: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	release()
+	select {
+	case err = <-acquired:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("colliding session lock remained blocked after release")
+	}
+
+	entries, err := os.ReadDir(filepath.Join(stateDir, "locks"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("session locks are not bounded to one shard: %d files, %v", len(entries), err)
+	}
+}

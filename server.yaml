@@ -2,7 +2,12 @@
 server:
   # Optional exact cross-origin frontend origins, e.g. allowed_origins: ["https://files.example.com"]
   listen: ":28080"
-  path: "./uploads"
+  # Files exposed for browsing and download.
+  files_dir: "./files"
+  # Session metadata, locks, disk budgets, and digest manifests.
+  states_dir: "./okserver_states"
+  # Upload chunks and streaming upload scratch data.
+  cache_dir: "./okserver_cache"
   auth: ""
   param: ""
   disable_front_ui: false
@@ -16,8 +21,6 @@ server:
     ca: ""
 
 upload:
-  # Empty uses .okserver beside the executable. Relative paths use the current working directory.
-  chunk_dir: ""
   idle_timeout: 2m
   session_ttl: 24h
   terminal_ttl: 168h

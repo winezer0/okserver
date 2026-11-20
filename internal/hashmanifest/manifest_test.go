@@ -56,7 +56,7 @@ func TestStorePersistsAndReplacesEntries(t *testing.T) {
 	if _, found, err = store.Lookup(first.Path, first.Fingerprint); err != nil || found {
 		t.Fatalf("replaced fingerprint remained valid: found=%v, err=%v", found, err)
 	}
-	if _, err = os.Stat(filepath.Join(root, ".okserver", "file-hashes.json")); err != nil {
+	if _, err = os.Stat(filepath.Join(root, "file-hashes.json")); err != nil {
 		t.Fatal("manifest file was not persisted:", err)
 	}
 }

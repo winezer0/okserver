@@ -35,8 +35,8 @@ type Store struct {
 	cachedInfo os.FileInfo
 }
 
-func New(root string) *Store {
-	return &Store{path: filepath.Join(root, ".okserver", "file-hashes.json")}
+func New(stateDir string) *Store {
+	return &Store{path: filepath.Join(stateDir, "file-hashes.json")}
 }
 
 func (s *Store) Lookup(path, fingerprint string) (Entry, bool, error) {

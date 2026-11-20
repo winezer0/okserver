@@ -50,7 +50,9 @@ func (fs *fileServer) startVerification(ctx context.Context, concurrency int) fu
 					} else {
 						delete(failures, task.ID)
 					}
-					if errors.Is(err, upload.ErrConflict) || errors.Is(err, upload.ErrPrecondition) || errors.Is(err, upload.ErrIncomplete) {
+					if errors.Is(err, upload.ErrPrecondition) {
+						_ = fs.uploads.FailWithCode(task.ID, "destination_changed")
+					} else if errors.Is(err, upload.ErrConflict) || errors.Is(err, upload.ErrIncomplete) {
 						_ = fs.uploads.Fail(task.ID)
 					}
 					if err == nil {

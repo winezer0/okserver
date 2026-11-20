@@ -32,6 +32,8 @@ for (const mode of [
     let queried = false;
     const progress = vi.fn();
     const fetchMock = vi.fn(async (_url: unknown, options: RequestInit = {}) => {
+      if (options.method === "HEAD" && String(_url).includes("/download/"))
+        return new Response(null, { status: 404 });
       const headers = () => ({
         "Upload-Offset": String(stored.length),
         "Upload-Length": String(file.size),
@@ -94,8 +96,52 @@ for (const mode of [
         expect.objectContaining({ phase: "completed", offset: file.size }),
       );
     }
-    expect(
-      fetchMock.mock.calls.every(([url]) => String(url).includes("/upload/nested/file.bin")),
-    ).toBe(true);
+    const uploadCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes("/upload/"));
+    expect(uploadCalls.length).toBeGreaterThan(0);
+    expect(uploadCalls.every(([url]) => String(url).includes("/upload/nested/file.bin"))).toBe(true);
   });
 }
+
+it("replaces an existing destination only after confirmation and with its current ETag", async () => {
+  const payload = "replacement";
+  const file = new File([payload], "file.bin") as unknown as globalThis.File;
+  const checksum = await sha256(payload);
+  const confirmOverwrite = vi.fn(() => true);
+  let stored = "";
+  const fetchMock = vi.fn(async (input: unknown, options: RequestInit = {}) => {
+    const url = new URL(String(input), location.origin);
+    if (options.method === "HEAD" && url.pathname.startsWith("/download/"))
+      return new Response(null, { headers: { ETag: '"sha256:old-version"' } });
+    if (options.method === "HEAD")
+      return new Response(null, { status: 404, headers: { "Upload-Chunk-Size": String(file.size) } });
+    const headers = new Headers(options.headers);
+    expect(url.searchParams.get("overwrite")).toBe("true");
+    expect(headers.get("If-Match")).toBe('"sha256:old-version"');
+    stored = new TextDecoder().decode(new Uint8Array(options.body as ArrayBuffer));
+    return new Response(null, {
+      status: 201,
+      headers: { "Upload-Offset": String(file.size), "X-File-SHA256": checksum },
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await serialUpload(file, "", vi.fn(), new AbortController().signal, confirmOverwrite);
+
+  expect(confirmOverwrite).toHaveBeenCalledWith("file.bin");
+  expect(stored).toBe(payload);
+});
+
+it("sends no upload request when overwrite confirmation is declined", async () => {
+  const file = new File(["data"], "file.bin") as unknown as globalThis.File;
+  const fetchMock = vi.fn(async (_input: unknown, options: RequestInit = {}) => {
+    if (options.method === "HEAD")
+      return new Response(null, { headers: { ETag: '"sha256:existing"' } });
+    return new Response(null, { status: 500 });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(
+    serialUpload(file, "", vi.fn(), new AbortController().signal, () => false),
+  ).rejects.toMatchObject({ name: "AbortError" });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -105,10 +106,18 @@ func TestDirectConditionalOverwrite(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		response.Body.Close()
 		if response.StatusCode != tc.want {
 			t.Fatalf("conditional overwrite: %d want %d", response.StatusCode, tc.want)
 		}
+		if tc.want == 412 {
+			var apiError struct {
+				Code string `json:"code"`
+			}
+			if err = json.NewDecoder(response.Body).Decode(&apiError); err != nil || apiError.Code != "destination_changed" {
+				t.Fatalf("stale ETag error code = %q, %v", apiError.Code, err)
+			}
+		}
+		response.Body.Close()
 	}
 }
 

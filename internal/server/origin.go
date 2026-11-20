@@ -37,7 +37,7 @@ func (fs *fileServer) allowOrigin(w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Add("Vary", "Origin")
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Expose-Headers", "X-File-SHA256, X-File-Size, ETag, Content-Range, Content-Disposition, Upload-Offset, Upload-Length, Upload-Chunk-Size, Upload-State, Upload-ID, Upload-Prefix-SHA256, Offset-Length, Retry-After")
+	w.Header().Set("Access-Control-Expose-Headers", "X-File-SHA256, X-File-Size, ETag, Content-Range, Content-Disposition, Upload-Offset, Upload-Length, Upload-Chunk-Size, Upload-State, Upload-Error-Code, Upload-ID, Upload-Prefix-SHA256, Offset-Length, Retry-After")
 	if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 		if !slices.Contains([]string{"GET", "HEAD", "POST", "PUT", "DELETE"}, r.Header.Get("Access-Control-Request-Method")) {
 			writeAPIError(w, 405, "preflight method is not allowed", nil)
