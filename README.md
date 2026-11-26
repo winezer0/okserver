@@ -4,6 +4,12 @@
 
 [English](README.en.md)
 
+## 图示
+
+<img width="1505" height="1134" alt="image" src="https://github.com/user-attachments/assets/a01a7ea5-c917-48c2-b58b-44f3920e3861" />
+
+<img width="1500" height="616" alt="image" src="https://github.com/user-attachments/assets/03994b07-0b74-4bd9-b0e1-d64c9665e2d5" />
+
 ## 功能
 
 - 浏览器文件工作台：目录浏览、分页、搜索和排序；中英文界面与明暗主题。
